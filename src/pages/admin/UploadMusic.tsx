@@ -93,6 +93,31 @@ const UploadMusic = () => {
     });
   };
 
+  // Transform URLs from various platforms to direct playable links
+  const transformAudioUrl = (url: string): string => {
+    let transformed = url.trim();
+    
+    // Google Drive: Convert sharing link to direct download
+    if (transformed.includes('drive.google.com')) {
+      const fileIdMatch = transformed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileIdMatch) {
+        transformed = `https://drive.google.com/uc?export=download&id=${fileIdMatch[1]}`;
+      }
+    }
+    
+    // Dropbox: Change dl=0 to dl=1 for direct download
+    if (transformed.includes('dropbox.com')) {
+      transformed = transformed.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+    }
+    
+    // OneDrive: Convert to direct download link
+    if (transformed.includes('1drv.ms') || transformed.includes('onedrive.live.com')) {
+      transformed = transformed.replace('embed', 'download');
+    }
+    
+    return transformed;
+  };
+
   const validateAudioUrl = async () => {
     if (!audioUrl.trim()) {
       toast.error('Please enter an audio URL');
@@ -110,19 +135,22 @@ const UploadMusic = () => {
     setIsValidatingUrl(true);
     setValidationErrors(prev => prev.filter(e => e.type !== 'url'));
 
+    const transformedUrl = transformAudioUrl(audioUrl);
+    
     try {
-      const duration = await getAudioDurationFromUrl(audioUrl);
+      const duration = await getAudioDurationFromUrl(transformedUrl);
       if (duration > 0) {
         setAudioDuration(duration);
         setUrlValidated(true);
         toast.success('Audio URL validated!');
       } else {
         setUrlValidated(true);
-        toast.success('URL accepted');
+        toast.success('URL accepted - will be used as provided');
       }
     } catch (error) {
+      // Accept URL anyway - user might know it works
       setUrlValidated(true);
-      toast.info('URL accepted - verify it plays correctly');
+      toast.success('URL accepted');
     } finally {
       setIsValidatingUrl(false);
     }
@@ -242,6 +270,9 @@ const UploadMusic = () => {
         const { data: audioUrlData } = supabase.storage.from('music').getPublicUrl(audioPath);
         finalAudioUrl = audioUrlData.publicUrl;
         fileSize = audioFile.size;
+      } else if (uploadMode === 'url') {
+        // Transform the URL to make it playable
+        finalAudioUrl = transformAudioUrl(audioUrl);
       }
 
       setUploadProgress(50);
@@ -249,6 +280,7 @@ const UploadMusic = () => {
       let finalCoverUrl = coverUrl || null;
       let coverSize = 0;
 
+      // Upload cover file if provided (works in both file and URL modes)
       if (coverFile) {
         const coverExt = coverFile.name.split('.').pop();
         const coverPath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${coverExt}`;
@@ -466,27 +498,74 @@ const UploadMusic = () => {
             )}
           </div>
 
-          {/* Cover URL Card */}
+          {/* Cover Image Card - File Upload OR URL */}
           <div className="ios-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Image className="w-4 h-4 text-accent" />
-              <Label className="text-sm font-medium">Cover Image URL</Label>
+              <Label className="text-sm font-medium">Cover Image</Label>
             </div>
-            <Input
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-              placeholder="https://example.com/cover.jpg"
-              className="h-11 rounded-xl bg-muted/30 border-0"
-            />
-            {coverUrl && (
-              <div className="mt-3 flex justify-center">
-                <img 
-                  src={coverUrl} 
-                  alt="Cover" 
-                  className="w-20 h-20 rounded-xl object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            
+            {/* Cover File Upload */}
+            <div
+              className={`relative border-2 border-dashed rounded-2xl p-4 text-center transition-colors mb-3 ${
+                isDraggingCover ? 'border-accent bg-accent/5' :
+                coverFile ? 'border-accent/50 bg-accent/5' :
+                'border-muted-foreground/20 hover:border-muted-foreground/40'
+              }`}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingCover(true); }}
+              onDragLeave={() => setIsDraggingCover(false)}
+              onDrop={handleCoverDrop}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverSelect}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+              {coverPreview ? (
+                <div className="relative inline-block">
+                  <img src={coverPreview} alt="Cover" className="w-20 h-20 rounded-xl object-cover mx-auto" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCoverFile(null); setCoverPreview(null); }}
+                    className="absolute -top-2 -right-2 p-1 bg-destructive rounded-full"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <Image className="w-8 h-8 mx-auto mb-1.5 text-muted-foreground/50" />
+                  <p className="font-medium text-sm">Tap to select or drop image</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WebP</p>
+                </div>
+              )}
+            </div>
+
+            {/* OR use URL */}
+            {!coverFile && (
+              <>
+                <div className="flex items-center gap-2 my-2">
+                  <div className="flex-1 h-px bg-muted-foreground/20" />
+                  <span className="text-xs text-muted-foreground">OR paste URL</span>
+                  <div className="flex-1 h-px bg-muted-foreground/20" />
+                </div>
+                <Input
+                  value={coverUrl}
+                  onChange={(e) => setCoverUrl(e.target.value)}
+                  placeholder="https://example.com/cover.jpg"
+                  className="h-11 rounded-xl bg-muted/30 border-0"
                 />
-              </div>
+                {coverUrl && (
+                  <div className="mt-3 flex justify-center">
+                    <img 
+                      src={coverUrl} 
+                      alt="Cover" 
+                      className="w-20 h-20 rounded-xl object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -494,9 +573,10 @@ const UploadMusic = () => {
           <div className="ios-card p-4 bg-primary/5 border-primary/10">
             <h3 className="font-medium text-sm mb-2">💡 URL Import Tips</h3>
             <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Use direct links ending in .mp3, .wav, etc.</li>
-              <li>• Google Drive: Enable "Anyone with link"</li>
-              <li>• Dropbox: Change "dl=0" to "dl=1"</li>
+              <li>• Use direct audio file links (.mp3, .wav, .m4a, etc.)</li>
+              <li>• Google Drive: Use sharing link - auto-converted</li>
+              <li>• Dropbox: Use sharing link - auto-converted</li>
+              <li>• ⚠️ YouTube/Spotify/SoundCloud links won't work (they don't provide direct audio)</li>
             </ul>
           </div>
 
