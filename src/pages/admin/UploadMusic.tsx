@@ -753,22 +753,33 @@ const UploadMusic = () => {
           </div>
 
           {/* Tips */}
-          <div className="ios-card p-4 bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20">
+          <div className="ios-card p-4 bg-gradient-to-br from-green-500/10 to-accent/5 border-green-500/20">
             <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              Supported Platforms
+              <Check className="w-4 h-4 text-green-500" />
+              Recommended: Direct Audio Links
             </h3>
             <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• <span className="text-foreground font-medium">YouTube</span> - Videos and music</li>
-              <li>• <span className="text-foreground font-medium">SoundCloud</span> - Tracks and mixes</li>
-              <li>• <span className="text-foreground font-medium">TikTok</span> - Video audio</li>
-              <li>• <span className="text-foreground font-medium">Twitter/X</span> - Video audio</li>
-              <li>• <span className="text-foreground font-medium">Instagram</span> - Reels and videos</li>
-              <li>• <span className="text-foreground font-medium">Direct links</span> - MP3, WAV, M4A files</li>
-              <li>• <span className="text-foreground font-medium">Cloud storage</span> - Google Drive, Dropbox</li>
+              <li>• <span className="text-foreground font-medium">Direct links</span> - MP3, WAV, FLAC, M4A, OGG files</li>
+              <li>• <span className="text-foreground font-medium">Google Drive</span> - Shared audio files</li>
+              <li>• <span className="text-foreground font-medium">Dropbox</span> - Direct download links</li>
+              <li>• <span className="text-foreground font-medium">OneDrive</span> - Shared audio files</li>
+              <li>• <span className="text-foreground font-medium">Any CDN</span> - Direct audio file URLs</li>
             </ul>
-            <p className="text-xs text-muted-foreground/70 mt-2 italic">
-              Note: Spotify links are not supported due to DRM protection
+          </div>
+          
+          <div className="ios-card p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border-yellow-500/20">
+            <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-yellow-500" />
+              Platform Extraction (Limited)
+            </h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Extraction from these platforms may not work due to bot protection:
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-0.5">
+              <li>• YouTube, SoundCloud, TikTok, Twitter/X, Instagram</li>
+            </ul>
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2 font-medium">
+              💡 Tip: Download audio using a tool like yt-dlp, then upload directly or use a cloud storage link.
             </p>
           </div>
 

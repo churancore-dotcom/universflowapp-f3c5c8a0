@@ -5,17 +5,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// List of public cobalt API instances (community-maintained, updated for v11 API)
-// These instances are from https://instances.cobalt.best/ and support the new API format
+// Cobalt instances with different API versions
+// v11 instances use root endpoint with downloadMode
+// v7 instances use /api/json with isAudioOnly
 const COBALT_INSTANCES = [
-  'https://cobalt-api.meowing.de',
-  'https://cobalt-backend.canine.tools',
-  'https://kityune.imput.net',
-  'https://nachos.imput.net',
-  'https://sun.imput.net',
+  // v7 instances (older API format, some don't require auth)
+  { url: 'https://downloadapi.stuff.solutions/api/json', version: 7 },
+  { url: 'https://capi.3kh0.net/api/json', version: 7 },
+  { url: 'https://co.eepy.today/api/json', version: 7 },
+  // v11 instances (newer API format)  
+  { url: 'https://cobalt-api.meowing.de', version: 11 },
+  { url: 'https://cobalt-backend.canine.tools', version: 11 },
+  { url: 'https://blossom.imput.net', version: 11 },
+  { url: 'https://sunny.imput.net', version: 11 },
 ];
 
-interface CobaltResponse {
+interface CobaltV7Response {
+  status: 'stream' | 'success' | 'redirect' | 'picker' | 'error';
+  url?: string;
+  text?: string;
+  picker?: Array<{ url: string; type: string }>;
+}
+
+interface CobaltV11Response {
   status: 'tunnel' | 'redirect' | 'picker' | 'error' | 'local-processing';
   url?: string;
   filename?: string;
@@ -25,11 +37,36 @@ interface CobaltResponse {
   audioFilename?: string;
 }
 
-async function tryExtractWithInstance(instanceUrl: string, mediaUrl: string): Promise<CobaltResponse | null> {
+type CobaltResponse = CobaltV7Response | CobaltV11Response;
+
+async function tryExtractWithInstance(
+  instanceUrl: string, 
+  version: number, 
+  mediaUrl: string
+): Promise<{ success: boolean; audioUrl?: string; filename?: string; error?: string }> {
   try {
-    console.log(`Trying cobalt instance: ${instanceUrl}`);
+    console.log(`Trying cobalt instance: ${instanceUrl} (v${version})`);
     
-    // The v11 API uses the root endpoint, not /api/json
+    let body: string;
+    if (version === 7) {
+      // v7 API format
+      body = JSON.stringify({
+        url: mediaUrl,
+        isAudioOnly: true,
+        aFormat: 'mp3',
+        filenamePattern: 'basic',
+      });
+    } else {
+      // v11 API format
+      body = JSON.stringify({
+        url: mediaUrl,
+        downloadMode: 'audio',
+        audioFormat: 'mp3',
+        audioBitrate: '320',
+        filenameStyle: 'basic',
+      });
+    }
+    
     const response = await fetch(instanceUrl, {
       method: 'POST',
       headers: {
@@ -37,34 +74,69 @@ async function tryExtractWithInstance(instanceUrl: string, mediaUrl: string): Pr
         'Content-Type': 'application/json',
         'User-Agent': 'UniversFlow/1.0 (+https://universflowapp.lovable.app)',
       },
-      body: JSON.stringify({
-        url: mediaUrl,
-        downloadMode: 'audio',
-        audioFormat: 'mp3',
-        audioBitrate: '320',
-        filenameStyle: 'basic',
-      }),
+      body,
     });
 
     console.log(`Instance ${instanceUrl} returned status ${response.status}`);
 
     if (!response.ok) {
-      // Try to get error details
       try {
         const errorData = await response.json();
         console.log(`Error response from ${instanceUrl}:`, JSON.stringify(errorData));
+        const errorCode = errorData.error?.code || errorData.text || 'Unknown error';
+        return { success: false, error: errorCode };
       } catch {
-        console.log(`Could not parse error response from ${instanceUrl}`);
+        return { success: false, error: `HTTP ${response.status}` };
       }
-      return null;
     }
 
-    const data = await response.json();
+    const data: CobaltResponse = await response.json();
     console.log(`Instance ${instanceUrl} response:`, JSON.stringify(data));
-    return data;
+    
+    // Handle v7 response format
+    if (version === 7) {
+      const v7Data = data as CobaltV7Response;
+      if (v7Data.status === 'error') {
+        return { success: false, error: v7Data.text || 'Unknown error' };
+      }
+      if (v7Data.status === 'stream' || v7Data.status === 'success' || v7Data.status === 'redirect') {
+        if (v7Data.url) {
+          return { success: true, audioUrl: v7Data.url, filename: 'audio.mp3' };
+        }
+      }
+      if (v7Data.status === 'picker' && v7Data.picker?.length) {
+        return { success: true, audioUrl: v7Data.picker[0].url, filename: 'audio.mp3' };
+      }
+    }
+    
+    // Handle v11 response format
+    if (version === 11) {
+      const v11Data = data as CobaltV11Response;
+      if (v11Data.status === 'error') {
+        return { success: false, error: v11Data.error?.code || 'Unknown error' };
+      }
+      if (v11Data.status === 'tunnel' || v11Data.status === 'redirect') {
+        if (v11Data.url) {
+          return { success: true, audioUrl: v11Data.url, filename: v11Data.filename || 'audio.mp3' };
+        }
+      }
+      if (v11Data.status === 'picker') {
+        if (v11Data.audio) {
+          return { success: true, audioUrl: v11Data.audio, filename: v11Data.audioFilename || 'audio.mp3' };
+        }
+        if (v11Data.picker?.length) {
+          return { success: true, audioUrl: v11Data.picker[0].url, filename: 'audio.mp3' };
+        }
+      }
+      if (v11Data.status === 'local-processing') {
+        return { success: false, error: 'Content requires local processing' };
+      }
+    }
+    
+    return { success: false, error: 'No audio URL in response' };
   } catch (error) {
     console.error(`Error with instance ${instanceUrl}:`, error);
-    return null;
+    return { success: false, error: error instanceof Error ? error.message : 'Network error' };
   }
 }
 
@@ -119,85 +191,42 @@ serve(async (req) => {
     }
 
     // Try each cobalt instance until one works
-    let result: CobaltResponse | null = null;
-    let lastError: string | null = null;
+    let lastError = '';
     
     for (const instance of COBALT_INSTANCES) {
-      result = await tryExtractWithInstance(instance, url);
-      if (result) {
-        if (result.status === 'error') {
-          // Store the error but try the next instance
-          lastError = result.error?.code || 'Unknown error';
-          console.log(`Instance returned error: ${lastError}, trying next...`);
+      const result = await tryExtractWithInstance(instance.url, instance.version, url);
+      
+      if (result.success && result.audioUrl) {
+        console.log(`Successfully extracted audio: ${result.audioUrl}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            audioUrl: result.audioUrl,
+            platform,
+            filename: result.filename,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (result.error) {
+        lastError = result.error;
+        // If it's an auth error, skip to next instance
+        if (result.error.includes('auth') || result.error.includes('jwt')) {
+          console.log(`Auth required, trying next instance...`);
           continue;
         }
-        // Got a successful result
-        break;
       }
     }
 
-    if (!result || result.status === 'error') {
-      const errorMessage = lastError || 'Failed to extract audio. All extraction servers are unavailable or protected.';
-      return new Response(
-        JSON.stringify({ 
-          error: errorMessage,
-          platform,
-          hint: 'Try using a direct audio link instead, or the service may require authentication.',
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Handle different response types
-    let audioUrl: string | null = null;
-    let filename = result.filename || 'audio.mp3';
-
-    if (result.status === 'tunnel' || result.status === 'redirect') {
-      audioUrl = result.url || null;
-    } else if (result.status === 'picker') {
-      // For picker responses, check for audio field or find audio in picker items
-      if (result.audio) {
-        audioUrl = result.audio;
-        if (result.audioFilename) {
-          filename = result.audioFilename;
-        }
-      } else if (result.picker) {
-        // Find the first audio item or use the first video item
-        const audioItem = result.picker.find(item => item.type === 'audio');
-        const videoItem = result.picker[0];
-        audioUrl = audioItem?.url || videoItem?.url || null;
-      }
-    } else if (result.status === 'local-processing') {
-      // For local-processing, we can't handle this server-side
-      return new Response(
-        JSON.stringify({ 
-          error: 'This content requires local processing which is not supported. Try a different URL or platform.',
-          platform,
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!audioUrl) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Could not find audio URL in response',
-          platform,
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Successfully extracted audio: ${audioUrl}`);
-
+    // All instances failed
     return new Response(
-      JSON.stringify({
-        success: true,
-        audioUrl,
+      JSON.stringify({ 
+        error: `Failed to extract audio: ${lastError || 'All extraction servers are unavailable.'}`,
         platform,
-        filename,
+        hint: 'Try using a direct audio link (MP3, WAV, etc.) instead. Most public extraction services now require authentication.',
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
