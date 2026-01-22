@@ -21,9 +21,9 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
   { icon: Upload, label: 'Upload Music', path: '/admin/upload' },
   { icon: Music, label: 'Manage Songs', path: '/admin/songs' },
+  { icon: Users, label: 'Manage Artists', path: '/admin/artists' },
   { icon: Disc, label: 'Manage Albums', path: '/admin/albums' },
   { icon: ListMusic, label: 'Playlists', path: '/admin/playlists' },
-  { icon: Users, label: 'Users', path: '/admin/users' },
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
   { icon: Settings, label: 'Settings', path: '/admin/settings' },
 ];

@@ -21,6 +21,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UploadMusic from "./pages/admin/UploadMusic";
 import ManageSongs from "./pages/admin/ManageSongs";
+import ManageArtists from "./pages/admin/ManageArtists";
 import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound";
 
@@ -61,6 +62,7 @@ const AnimatedRoutes = () => {
           <Route index element={<AdminDashboard />} />
           <Route path="upload" element={<UploadMusic />} />
           <Route path="songs" element={<ManageSongs />} />
+          <Route path="artists" element={<ManageArtists />} />
           <Route path="albums" element={<ManageSongs />} />
           <Route path="playlists" element={<ManageSongs />} />
           <Route path="users" element={<AdminDashboard />} />

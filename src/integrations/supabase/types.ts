@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      artists: {
+        Row: {
+          bio: string | null
+          created_at: string
+          genre: string | null
+          id: string
+          name: string
+          photo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          name: string
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          name?: string
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       playlist_songs: {
         Row: {
           added_at: string
@@ -182,6 +212,7 @@ export type Database = {
         Row: {
           album: string | null
           artist: string
+          artist_id: string | null
           audio_url: string
           bitrate: number | null
           bpm: number | null
@@ -202,6 +233,7 @@ export type Database = {
         Insert: {
           album?: string | null
           artist: string
+          artist_id?: string | null
           audio_url: string
           bitrate?: number | null
           bpm?: number | null
@@ -222,6 +254,7 @@ export type Database = {
         Update: {
           album?: string | null
           artist?: string
+          artist_id?: string | null
           audio_url?: string
           bitrate?: number | null
           bpm?: number | null
@@ -239,7 +272,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_library: {
         Row: {
