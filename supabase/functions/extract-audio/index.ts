@@ -5,46 +5,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Hardcoded Piped instances - multiple reliable ones for redundancy
+// Piped instances (community-run YouTube proxies)
 const PIPED_INSTANCES = [
-  'https://api.piped.private.coffee',
   'https://pipedapi.kavin.rocks',
-  'https://pipedapi.darkness.services',
-  'https://pipedapi.syncpundit.io',
-  'https://api.piped.yt',
-  'https://pipedapi.adminforge.de',
-  'https://pipedapi.r4fo.com',
-  'https://pipedapi.drgns.space',
-  'https://pipedapi.in.projectsegfau.lt',
-  'https://pipedapi.leptons.xyz',
+  'https://api.piped.private.coffee',
+  'https://pipedapi.tokhmi.xyz',
   'https://pipedapi.moomoo.me',
-  'https://pipedapi.colinslegacy.com',
+  'https://pipedapi.syncpundit.io',
+  'https://api-piped.mha.fi',
+  'https://pipedapi.leptons.xyz',
+  'https://piped-api.lunar.icu',
+  'https://pipedapi.r4fo.com',
+  'https://pipedapi.adminforge.de',
+  'https://api.piped.yt',
+  'https://pipedapi.drgns.space',
 ];
 
-interface PipedInstance {
-  name: string;
-  api_url: string;
-  uptime_24h?: number;
-  uptime_7d?: number;
-  up_to_date?: boolean;
-}
-
-interface PipedStreamResponse {
-  title: string;
-  uploader: string;
-  uploaderId: string;
-  duration: number;
-  thumbnailUrl: string;
-  audioStreams?: Array<{
-    url: string;
-    bitrate: number;
-    mimeType: string;
-    quality: string;
-    format: string;
-  }>;
-  error?: string;
-  message?: string;
-}
+// Invidious instances (alternative YouTube proxy network)
+const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.private.coffee',
+  'https://invidious.nerdvpn.de',
+  'https://yt.artemislena.eu',
+  'https://invidious.fdn.fr',
+  'https://invidious.perennialte.ch',
+  'https://invidious.slipfox.xyz',
+  'https://invidious.jing.rocks',
+  'https://iv.nboez.cc',
+  'https://invidious.protokolla.fi',
+];
 
 interface ExtractionResult {
   success: boolean;
@@ -98,16 +87,10 @@ function isPlaylistUrl(url: string): boolean {
   }
 }
 
-// Get Piped instances - use hardcoded list directly for reliability
-function getPipedInstances(): string[] {
-  // Shuffle to distribute load
-  return [...PIPED_INSTANCES].sort(() => Math.random() - 0.5);
-}
-
-// Try a single Piped instance
+// Try a Piped instance
 async function tryPipedInstance(apiUrl: string, videoId: string): Promise<ExtractionResult | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(
@@ -128,7 +111,7 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
       return null;
     }
 
-    const data: PipedStreamResponse = await response.json();
+    const data = await response.json();
     
     if (data.error || data.message) {
       console.log(`  ✗ ${new URL(apiUrl).hostname}: ${data.error || data.message}`);
@@ -141,7 +124,7 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
     }
 
     // Sort audio streams by bitrate (highest first), prefer m4a
-    const sortedStreams = [...data.audioStreams].sort((a, b) => {
+    const sortedStreams = [...data.audioStreams].sort((a: any, b: any) => {
       const aIsM4a = a.mimeType?.includes('mp4') || a.format === 'm4a';
       const bIsM4a = b.mimeType?.includes('mp4') || b.format === 'm4a';
       if (aIsM4a && !bIsM4a) return -1;
@@ -171,24 +154,126 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
   }
 }
 
-// Main extraction function
+// Try an Invidious instance
+async function tryInvidiousInstance(apiUrl: string, videoId: string): Promise<ExtractionResult | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(
+      `${apiUrl}/api/v1/videos/${videoId}`,
+      {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: HTTP ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.error) {
+      console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: ${data.error}`);
+      return null;
+    }
+
+    if (!data.adaptiveFormats || data.adaptiveFormats.length === 0) {
+      console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: No adaptive formats`);
+      return null;
+    }
+
+    // Filter to audio-only formats
+    const audioFormats = data.adaptiveFormats.filter((f: any) => 
+      f.type?.startsWith('audio/') || f.encoding === 'opus' || f.encoding === 'aac'
+    );
+
+    if (audioFormats.length === 0) {
+      console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: No audio formats`);
+      return null;
+    }
+
+    // Sort by bitrate, prefer m4a/aac
+    const sortedFormats = [...audioFormats].sort((a: any, b: any) => {
+      const aIsM4a = a.type?.includes('mp4') || a.container === 'm4a';
+      const bIsM4a = b.type?.includes('mp4') || b.container === 'm4a';
+      if (aIsM4a && !bIsM4a) return -1;
+      if (!aIsM4a && bIsM4a) return 1;
+      return (b.bitrate || 0) - (a.bitrate || 0);
+    });
+
+    const bestFormat = sortedFormats[0];
+    const bitrate = bestFormat.bitrate ? Math.round(bestFormat.bitrate / 1000) : 'N/A';
+    console.log(`  ✓ [INV] ${new URL(apiUrl).hostname}: ${bestFormat.encoding || 'audio'} ${bitrate}kbps`);
+
+    // Get best thumbnail
+    let thumbnail = '';
+    if (data.videoThumbnails && data.videoThumbnails.length > 0) {
+      const maxresThumbnail = data.videoThumbnails.find((t: any) => t.quality === 'maxres');
+      thumbnail = maxresThumbnail?.url || data.videoThumbnails[0]?.url || '';
+    }
+
+    return {
+      success: true,
+      audioUrl: bestFormat.url,
+      title: data.title,
+      artist: data.author,
+      thumbnail: thumbnail,
+      duration: data.lengthSeconds,
+      platform: 'YouTube',
+    };
+
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    const err = error as Error;
+    const msg = err.name === 'AbortError' ? 'Timeout' : (err.message?.substring(0, 40) || 'Error');
+    console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: ${msg}`);
+    return null;
+  }
+}
+
+// Main extraction function - tries Piped first, then Invidious as fallback
 async function extractFromYouTube(videoId: string): Promise<ExtractionResult> {
   console.log(`\n=== Extracting YouTube video: ${videoId} ===`);
   
-  // Get shuffled instances
-  const instances = getPipedInstances();
-  console.log(`Testing ${instances.length} Piped instances...`);
-
-  // Try instances in parallel batches of 4
-  for (let i = 0; i < instances.length; i += 4) {
-    const batch = instances.slice(i, i + 4);
-    console.log(`\nBatch ${Math.floor(i/4) + 1}:`);
+  // Shuffle instances for load distribution
+  const pipedInstances = [...PIPED_INSTANCES].sort(() => Math.random() - 0.5);
+  const invidiousInstances = [...INVIDIOUS_INSTANCES].sort(() => Math.random() - 0.5);
+  
+  // Try Piped instances first (batches of 6)
+  console.log(`\nTrying ${pipedInstances.length} Piped instances...`);
+  for (let i = 0; i < pipedInstances.length; i += 6) {
+    const batch = pipedInstances.slice(i, i + 6);
+    console.log(`Piped Batch ${Math.floor(i/6) + 1}:`);
     
     const results = await Promise.all(
-      batch.map((instance: string) => tryPipedInstance(instance, videoId))
+      batch.map(instance => tryPipedInstance(instance, videoId))
     );
 
-    const success = results.find((r: ExtractionResult | null) => r?.success);
+    const success = results.find(r => r?.success);
+    if (success) {
+      return success;
+    }
+  }
+  
+  // Fallback to Invidious instances (batches of 5)
+  console.log(`\nPiped failed. Trying ${invidiousInstances.length} Invidious instances...`);
+  for (let i = 0; i < invidiousInstances.length; i += 5) {
+    const batch = invidiousInstances.slice(i, i + 5);
+    console.log(`Invidious Batch ${Math.floor(i/5) + 1}:`);
+    
+    const results = await Promise.all(
+      batch.map(instance => tryInvidiousInstance(instance, videoId))
+    );
+
+    const success = results.find(r => r?.success);
     if (success) {
       return success;
     }
