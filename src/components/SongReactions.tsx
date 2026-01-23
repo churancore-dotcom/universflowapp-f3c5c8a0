@@ -2,7 +2,7 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, Send, X, Smile } from 'lucide-react';
+import { MessageCircle, Send, Smile } from 'lucide-react';
 import { iosSpring } from '@/lib/animations';
 import { toast } from 'sonner';
 
@@ -24,6 +24,11 @@ interface Comment {
   created_at: string;
 }
 
+interface ReactionRow {
+  emoji: string;
+  user_id: string;
+}
+
 const EMOJI_OPTIONS = ['❤️', '🔥', '😍', '🎵', '💯', '🙌', '✨', '🎶'];
 
 const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
@@ -39,8 +44,8 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
     if (!songId) return;
 
     try {
-      // Fetch reactions
-      const { data: reactionsData } = await supabase
+      // Fetch reactions - cast to any since types aren't synced yet
+      const { data: reactionsData } = await (supabase as any)
         .from('song_reactions')
         .select('emoji, user_id')
         .eq('song_id', songId);
@@ -48,7 +53,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
       if (reactionsData) {
         const reactionMap: Record<string, Reaction> = {};
         EMOJI_OPTIONS.forEach(emoji => {
-          const emojiReactions = reactionsData.filter(r => r.emoji === emoji);
+          const emojiReactions = (reactionsData as ReactionRow[]).filter(r => r.emoji === emoji);
           reactionMap[emoji] = {
             emoji,
             count: emojiReactions.length,
@@ -59,7 +64,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
       }
 
       // Fetch comments
-      const { data: commentsData } = await supabase
+      const { data: commentsData } = await (supabase as any)
         .from('song_comments')
         .select('id, user_email, content, created_at')
         .eq('song_id', songId)
@@ -67,7 +72,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
         .limit(20);
 
       if (commentsData) {
-        setComments(commentsData);
+        setComments(commentsData as Comment[]);
       }
     } catch (error) {
       console.error('Failed to fetch reactions:', error);
@@ -98,7 +103,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
       
       if (reaction?.hasReacted) {
         // Remove reaction
-        await supabase
+        await (supabase as any)
           .from('song_reactions')
           .delete()
           .eq('song_id', songId)
@@ -106,7 +111,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
           .eq('emoji', emoji);
       } else {
         // Add reaction
-        await supabase
+        await (supabase as any)
           .from('song_reactions')
           .insert({
             song_id: songId,
@@ -127,7 +132,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
 
     setIsLoading(true);
     try {
-      await supabase
+      await (supabase as any)
         .from('song_comments')
         .insert({
           song_id: songId,
@@ -263,7 +268,7 @@ const SongReactions = memo(({ songId, songTitle }: SongReactionsProps) => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Send className="w-4 h-4 text-white" />
+                  <Send className="w-4 h-4 text-primary-foreground" />
                 </motion.button>
               </div>
             </div>

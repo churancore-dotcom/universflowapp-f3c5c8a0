@@ -10,6 +10,7 @@ import LikeButton from './LikeButton';
 import ShareSongModal from './ShareSongModal';
 import AddToPlaylistModal from './AddToPlaylistModal';
 import CreatePlaylistModal from './CreatePlaylistModal';
+import SongReactions from './SongReactions';
 
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -324,6 +325,11 @@ const FullscreenPlayer = () => {
                   </motion.button>
                   <LikeButton songId={currentSong.id} size="md" />
                 </div>
+              </div>
+
+              {/* Song Reactions */}
+              <div className="mt-4">
+                <SongReactions songId={currentSong.id} songTitle={currentSong.title} />
               </div>
             </motion.div>
 

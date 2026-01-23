@@ -20,8 +20,12 @@ import BottomNav from '@/components/BottomNav';
 import MiniPlayer from '@/components/MiniPlayer';
 import FullscreenPlayer from '@/components/FullscreenPlayer';
 import LockScreenPlayer from '@/components/LockScreenPlayer';
+import EqualizerModal from '@/components/EqualizerModal';
+import AudioVisualizer from '@/components/AudioVisualizer';
+import AIPlaylistGenerator from '@/components/AIPlaylistGenerator';
+import OfflineIndicator from '@/components/OfflineIndicator';
 import { TabTransition } from '@/components/PageTransition';
-import { Sparkles, Music, Lock, Bell, Moon, ListMusic } from 'lucide-react';
+import { Sparkles, Music, Lock, Bell, Moon, ListMusic, Sliders, Waves, Wand2 } from 'lucide-react';
 import { iosSpring, staggerContainer } from '@/lib/animations';
 import { toast } from 'sonner';
 
@@ -34,6 +38,9 @@ const Home = () => {
   const [showLockScreen, setShowLockScreen] = useState(false);
   const [showSleepTimer, setShowSleepTimer] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [showEqualizer, setShowEqualizer] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+  const [showAIPlaylist, setShowAIPlaylist] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   useEffect(() => {
@@ -214,6 +221,22 @@ const Home = () => {
               <h1 className="text-[22px] font-bold tracking-tight">{user?.email?.split('@')[0] || 'Music Lover'}</h1>
             </motion.div>
             <div className="flex items-center gap-2">
+              {/* AI DJ button */}
+              <motion.button
+                onClick={() => setShowAIPlaylist(true)}
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 55%))',
+                }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                transition={iosSpring}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <Wand2 className="w-5 h-5 text-white" />
+              </motion.button>
+
               {/* Queue button */}
               <motion.button
                 onClick={() => setShowQueue(true)}
@@ -226,6 +249,49 @@ const Home = () => {
               >
                 <ListMusic className="w-5 h-5 text-white/80" />
               </motion.button>
+
+              {currentSong && (
+                <>
+                  {/* Equalizer button */}
+                  <motion.button
+                    onClick={() => setShowEqualizer(true)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center glass"
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={iosSpring}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <Sliders className="w-5 h-5 text-white/80" />
+                  </motion.button>
+
+                  {/* Visualizer button */}
+                  <motion.button
+                    onClick={() => setShowVisualizer(true)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center glass"
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={iosSpring}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <Waves className="w-5 h-5 text-white/80" />
+                  </motion.button>
+
+                  {/* Lock Screen button */}
+                  <motion.button
+                    onClick={() => setShowLockScreen(true)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center glass"
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={iosSpring}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <Lock className="w-5 h-5 text-white/80" />
+                  </motion.button>
+                </>
+              )}
 
               {/* Sleep timer button */}
               <motion.button
@@ -253,32 +319,6 @@ const Home = () => {
                   <Bell className="w-5 h-5 text-white/80" />
                 </motion.button>
               )}
-              {currentSong && (
-                <motion.button
-                  onClick={() => setShowLockScreen(true)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center glass"
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
-                  transition={iosSpring}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <Lock className="w-5 h-5 text-white/80" />
-                </motion.button>
-              )}
-              <motion.button
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(211 100% 50%), hsl(328 100% 54%))',
-                }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
-                transition={iosSpring}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
-                <Sparkles className="w-5 h-5 text-white" />
-              </motion.button>
             </div>
           </div>
         </motion.header>
@@ -353,6 +393,10 @@ const Home = () => {
         <LockScreenPlayer isOpen={showLockScreen} onClose={() => setShowLockScreen(false)} />
         <SleepTimerModal isOpen={showSleepTimer} onClose={() => setShowSleepTimer(false)} />
         <QueueDrawer isOpen={showQueue} onClose={() => setShowQueue(false)} />
+        <EqualizerModal isOpen={showEqualizer} onClose={() => setShowEqualizer(false)} audioContext={null} sourceNode={null} />
+        <AudioVisualizer isOpen={showVisualizer} onClose={() => setShowVisualizer(false)} />
+        <AIPlaylistGenerator isOpen={showAIPlaylist} onClose={() => setShowAIPlaylist(false)} onPlaylistCreated={fetchSongs} />
+        <OfflineIndicator />
       </motion.div>
     </TabTransition>
   );

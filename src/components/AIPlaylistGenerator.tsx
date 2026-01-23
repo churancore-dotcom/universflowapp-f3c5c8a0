@@ -123,14 +123,14 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
       setGenerationStep('Creating your playlist...');
       
       // Create the playlist
-      const playlistName = customPrompt.trim() 
+      const playlistTitle = customPrompt.trim() 
         ? `AI: ${customPrompt.slice(0, 30)}${customPrompt.length > 30 ? '...' : ''}`
         : `AI: ${mood?.label} Mix`;
 
       const { data: newPlaylist, error: playlistError } = await supabase
         .from('playlists')
         .insert({
-          name: playlistName,
+          title: playlistTitle,
           description: `AI-generated playlist for ${prompt}`,
           user_id: user.id,
           is_public: false,
@@ -156,7 +156,7 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
       setGenerationStep('Done! ✨');
       await new Promise(r => setTimeout(r, 500));
 
-      toast.success(`Created "${playlistName}" with ${matchingSongs.length} songs!`);
+      toast.success(`Created "${playlistTitle}" with ${matchingSongs.length} songs!`);
       onPlaylistCreated?.();
       onClose();
     } catch (error) {
@@ -200,10 +200,7 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
           <div className="flex items-center justify-between p-5 border-b border-white/5">
             <div className="flex items-center gap-3">
               <motion.div 
-                className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 55%))',
-                }}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500"
                 animate={{
                   boxShadow: [
                     '0 0 20px rgba(168, 85, 247, 0.4)',
@@ -282,10 +279,7 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
             <motion.button
               onClick={generatePlaylist}
               disabled={isGenerating || (!selectedMood && !customPrompt.trim())}
-              className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-3"
-              style={{
-                background: 'linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 55%))',
-              }}
+              className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-3 bg-gradient-to-r from-violet-500 to-pink-500"
               whileHover={{ scale: isGenerating ? 1 : 1.02 }}
               whileTap={{ scale: isGenerating ? 1 : 0.98 }}
             >
