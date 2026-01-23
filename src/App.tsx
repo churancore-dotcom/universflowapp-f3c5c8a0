@@ -26,6 +26,8 @@ import ManageArtists from "./pages/admin/ManageArtists";
 import ManageAlbums from "./pages/admin/ManageAlbums";
 import ManagePlaylists from "./pages/admin/ManagePlaylists";
 import ManageUsers from "./pages/admin/ManageUsers";
+import ManageSubscriptions from "./pages/admin/ManageSubscriptions";
+import DonationHistory from "./pages/admin/DonationHistory";
 import AdminSettings from "./pages/admin/Settings";
 import Analytics from "./pages/admin/Analytics";
 import ActivityLogs from "./pages/admin/ActivityLogs";
@@ -79,6 +81,8 @@ const AnimatedRoutes = () => {
           <Route path="albums" element={<ManageAlbums />} />
           <Route path="playlists" element={<ManagePlaylists />} />
           <Route path="users" element={<ManageUsers />} />
+          <Route path="subscriptions" element={<ManageSubscriptions />} />
+          <Route path="donations" element={<DonationHistory />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="logs" element={<ActivityLogs />} />
           <Route path="bulk" element={<BulkActions />} />

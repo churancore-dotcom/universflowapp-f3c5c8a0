@@ -14,7 +14,9 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
-  X
+  X,
+  Crown,
+  Heart
 } from 'lucide-react';
 
 const navItems = [
@@ -25,6 +27,8 @@ const navItems = [
   { icon: Disc, label: 'Manage Albums', path: '/admin/albums' },
   { icon: ListMusic, label: 'Playlists', path: '/admin/playlists' },
   { icon: Users, label: 'Users', path: '/admin/users' },
+  { icon: Crown, label: 'Subscriptions', path: '/admin/subscriptions' },
+  { icon: Heart, label: 'Donations', path: '/admin/donations' },
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
   { icon: BarChart3, label: 'Bulk Actions', path: '/admin/bulk' },
   { icon: BarChart3, label: 'Activity Logs', path: '/admin/logs' },
