@@ -25,7 +25,7 @@ import AIPlaylistGenerator from '@/components/AIPlaylistGenerator';
 import OfflineIndicator from '@/components/OfflineIndicator';
 import OfflineSection from '@/components/OfflineSection';
 import { TabTransition } from '@/components/PageTransition';
-import { Sparkles, Music, Lock, Moon, ListMusic, Sliders, Waves } from 'lucide-react';
+import { Sparkles, Music, Lock, ListMusic, Sliders } from 'lucide-react';
 import { iosSpring, staggerContainer } from '@/lib/animations';
 import { toast } from 'sonner';
 
@@ -196,12 +196,15 @@ const Home = () => {
   return (
     <TabTransition>
       <motion.div 
-        className="min-h-screen bg-black pb-40 relative overflow-hidden"
+        className="min-h-screen bg-black pb-40 relative overflow-y-auto overflow-x-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={iosSpring}
         {...handlers}
-        style={{ transform: `translateY(${pullDistance}px)` }}
+        style={{ 
+          transform: `translateY(${pullDistance}px)`,
+          WebkitOverflowScrolling: 'touch',
+        }}
       >
         {/* Dynamic gradient background that responds to current song */}
         <div className="absolute inset-0 pointer-events-none">
@@ -279,16 +282,6 @@ const Home = () => {
                 <Sliders className="w-5 h-5 text-white/80" />
               </motion.button>
 
-              {/* Visualizer button */}
-              <motion.button
-                onClick={() => setShowVisualizer(true)}
-                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0"
-                whileTap={{ scale: 0.9 }}
-                transition={iosSpring}
-              >
-                <Waves className="w-5 h-5 text-white/80" />
-              </motion.button>
-
               {/* Lock Screen button */}
               <motion.button
                 onClick={() => setShowLockScreen(true)}
@@ -297,16 +290,6 @@ const Home = () => {
                 transition={iosSpring}
               >
                 <Lock className="w-5 h-5 text-white/80" />
-              </motion.button>
-
-              {/* Sleep timer button */}
-              <motion.button
-                onClick={() => setShowSleepTimer(true)}
-                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0"
-                whileTap={{ scale: 0.9 }}
-                transition={iosSpring}
-              >
-                <Moon className="w-5 h-5 text-white/80" />
               </motion.button>
             </div>
           </div>
@@ -345,14 +328,14 @@ const Home = () => {
                 </HorizontalSection>
               )}
 
+              {/* Featured Artists - Below Recommended */}
+              <FeaturedArtistsSection />
+
               {/* Top Charts */}
               <TopChartsSection />
 
               {/* Recently Played */}
               <RecentlyPlayedSection />
-
-              {/* Featured Artists */}
-              <FeaturedArtistsSection />
 
               {/* Favorites Widget */}
               <FavoritesWidget />
