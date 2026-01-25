@@ -32,13 +32,13 @@ import { toast } from 'sonner';
 // Memoized empty state component
 const EmptyState = memo(() => (
   <motion.div
-    className="text-center py-16 sm:py-20"
+    className="text-center py-16"
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={iosSpring}
   >
     <motion.div 
-      className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6"
+      className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
       style={{
         background: 'linear-gradient(135deg, hsl(211 100% 50% / 0.2), hsl(328 100% 54% / 0.2))',
       }}
@@ -46,10 +46,10 @@ const EmptyState = memo(() => (
       animate={{ scale: 1, rotate: 0 }}
       transition={{ ...iosSpring, delay: 0.1 }}
     >
-      <Music className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
+      <Music className="w-10 h-10 text-muted-foreground" />
     </motion.div>
     <motion.h2 
-      className="text-lg sm:text-xl font-semibold mb-2"
+      className="text-lg font-semibold mb-2"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
@@ -57,7 +57,7 @@ const EmptyState = memo(() => (
       No music yet
     </motion.h2>
     <motion.p 
-      className="text-muted-foreground max-w-xs mx-auto text-sm sm:text-[15px] px-4"
+      className="text-muted-foreground max-w-xs mx-auto text-sm px-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.3 }}
@@ -72,12 +72,12 @@ EmptyState.displayName = 'EmptyState';
 // Loading skeleton
 const LoadingSkeleton = memo(() => (
   <motion.div 
-    className="flex justify-center py-16 sm:py-20"
+    className="flex justify-center py-16"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
   >
     <motion.div 
-      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-primary border-t-transparent"
+      className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent"
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
     />
