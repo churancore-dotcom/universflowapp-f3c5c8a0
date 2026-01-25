@@ -23,20 +23,28 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-// iOS-optimized spring - smooth, responsive, no lag
+// iOS + Origin OS 6 optimized springs - ultra smooth, zero lag
 const iosSpring = {
   type: "spring" as const,
-  stiffness: 400,
-  damping: 35,
-  mass: 0.8,
+  stiffness: 500,
+  damping: 32,
+  mass: 0.5,
 };
 
-// Quick tap response spring
+// Origin OS 6 elastic bounce for art scaling
+const originBounce = {
+  type: "spring" as const,
+  stiffness: 380,
+  damping: 22,
+  mass: 0.6,
+};
+
+// Ultra-fast tap response
 const tapSpring = {
   type: "spring" as const,
-  stiffness: 600,
-  damping: 25,
-  mass: 0.3,
+  stiffness: 700,
+  damping: 28,
+  mass: 0.2,
 };
 
 // Apple Music volume slider - memoized
@@ -135,50 +143,63 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
             <div className="absolute inset-0 bg-black/60" />
           </div>
 
-          {/* Main content container - mobile optimized */}
-          <div className="relative flex flex-col h-full px-4 pt-2 pb-4">
-            {/* Drag indicator */}
-            <div className="flex justify-center mb-1">
-              <div className="w-9 h-1 rounded-full bg-white/30" />
+          {/* Main content - ultra compact, no wasted space */}
+          <div className="relative flex flex-col h-full px-5 pt-3 pb-3">
+            {/* Drag indicator - minimal */}
+            <div className="flex justify-center mb-2">
+              <motion.div 
+                className="w-10 h-1 rounded-full bg-white/40"
+                whileHover={{ scaleX: 1.2 }}
+                transition={tapSpring}
+              />
             </div>
 
-            {/* Header - compact */}
-            <div className="flex items-center justify-between mb-2">
+            {/* Header - ultra compact */}
+            <div className="flex items-center justify-between mb-3">
               <motion.button 
-                className="w-12 h-12 flex items-center justify-center -ml-2 touch-manipulation" 
+                className="w-11 h-11 flex items-center justify-center -ml-2 touch-manipulation" 
                 onClick={() => { triggerHaptic('impactLight'); setExpanded(false); }} 
-                whileTap={{ scale: 0.9 }} 
+                whileTap={{ scale: 0.85 }} 
                 transition={tapSpring}
               >
                 <ChevronDown className="w-7 h-7 text-white/80" />
               </motion.button>
               
-              <div className="text-center flex-1 px-2 min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-widest text-white/50">
-                  Playing From
+              <motion.div 
+                className="text-center flex-1 px-3 min-w-0"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={originBounce}
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                  Now Playing
                 </p>
                 <p className="text-xs font-semibold text-white/90 truncate">
                   {currentSong.album || 'Library'}
                 </p>
-              </div>
+              </motion.div>
               
               <motion.button 
-                className="w-12 h-12 flex items-center justify-center -mr-2 touch-manipulation" 
+                className="w-11 h-11 flex items-center justify-center -mr-2 touch-manipulation" 
                 onClick={() => { triggerHaptic('impactLight'); setShowPlaylistModal(true); }} 
-                whileTap={{ scale: 0.9 }} 
+                whileTap={{ scale: 0.85 }} 
                 transition={tapSpring}
               >
                 <Ellipsis className="w-6 h-6 text-white/80" />
               </motion.button>
             </div>
 
-            {/* Album Art - flexible, centered */}
-            <div className="flex-1 flex items-center justify-center min-h-0 py-2">
+            {/* Album Art - maximized, fills available space */}
+            <div className="flex-1 flex items-center justify-center min-h-0">
               <motion.div 
-                className="relative w-[80vw] max-w-[300px] aspect-square" 
-                initial={{ scale: 0.8, opacity: 0 }} 
-                animate={{ scale: isPlaying ? 1 : 0.95, opacity: 1 }} 
-                transition={iosSpring}
+                className="relative w-[85vw] max-w-[340px] aspect-square" 
+                initial={{ scale: 0.85, opacity: 0, y: 20 }} 
+                animate={{ 
+                  scale: isPlaying ? 1 : 0.96, 
+                  opacity: 1,
+                  y: 0 
+                }} 
+                transition={originBounce}
               >
                 <AlbumArtAnimations 
                   isPlaying={isPlaying} 
@@ -189,151 +210,193 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
                 />
 
                 <motion.div 
-                  className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl z-10 bg-muted" 
+                  className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl z-10 bg-muted" 
                   animate={{
                     boxShadow: isPlaying 
-                      ? `0 0 ${40 + bassFrequency * 30}px ${10 + bassFrequency * 10}px hsl(var(--primary) / ${0.2 + bassFrequency * 0.15}), 0 20px 40px -10px rgba(0, 0, 0, 0.7)` 
-                      : '0 15px 30px -10px rgba(0, 0, 0, 0.5)',
-                    scale: isPlaying ? 1 + bassFrequency * 0.02 : 1
+                      ? `0 0 ${50 + bassFrequency * 40}px ${12 + bassFrequency * 15}px hsl(var(--primary) / ${0.25 + bassFrequency * 0.2}), 0 25px 50px -12px rgba(0, 0, 0, 0.8)` 
+                      : '0 20px 40px -15px rgba(0, 0, 0, 0.6)',
+                    scale: isPlaying ? 1 + bassFrequency * 0.015 : 1,
+                    rotate: isPlaying ? bassFrequency * 0.3 : 0
                   }} 
-                  transition={{ duration: 0.05, ease: 'linear' }}
+                  transition={{ duration: 0.04, ease: 'linear' }}
                 >
                   {currentSong.cover_url ? (
-                    <img 
+                    <motion.img 
                       src={currentSong.cover_url} 
                       alt={currentSong.title} 
                       className="w-full h-full object-cover" 
                       draggable={false}
                       loading="eager"
+                      initial={{ scale: 1.1 }}
+                      animate={{ scale: 1 }}
+                      transition={originBounce}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                      <div className="text-white/60 text-6xl">♪</div>
+                      <div className="text-white/60 text-7xl">♪</div>
                     </div>
                   )}
                 </motion.div>
               </motion.div>
             </div>
 
-            {/* Controls Section - fixed at bottom */}
-            <div className="flex-shrink-0 space-y-3">
+            {/* Controls Section - tight spacing */}
+            <motion.div 
+              className="flex-shrink-0 space-y-2.5 mt-3"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...originBounce, delay: 0.1 }}
+            >
               {/* Title and Artist */}
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-white truncate">
+                  <motion.h2 
+                    className="text-xl font-bold text-white truncate"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={originBounce}
+                  >
                     {currentSong.title}
-                  </h2>
+                  </motion.h2>
                   <motion.button 
-                    className="text-sm text-rose-400 font-medium truncate block" 
+                    className="text-base text-rose-400 font-medium truncate block" 
                     onClick={() => {
                       if (currentSong.artist_id) {
+                        triggerHaptic('selection');
                         setExpanded(false);
                         navigate(`/artist/${currentSong.artist_id}`);
                       }
                     }} 
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={tapSpring}
                   >
                     {currentSong.artist}
                   </motion.button>
                 </div>
-                <div className="flex items-center gap-0.5 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <LikeButton songId={currentSong.id} size="sm" />
                   <DownloadButton song={currentSong} size="sm" />
                 </div>
               </div>
 
-              {/* Progress bar - easy to drag, larger touch target */}
-              <div className="py-1">
+              {/* Progress bar - large touch target */}
+              <div className="py-0.5">
                 <Slider 
                   value={[safeProgress]} 
                   max={safeDuration} 
                   step={0.1} 
                   onValueChange={([value]) => seek(value)} 
-                  className="[&_[role=slider]]:w-5 [&_[role=slider]]:h-5 [&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[data-radix-slider-track]]:h-1 [&_[data-radix-slider-track]]:bg-white/20 [&_[data-radix-slider-range]]:bg-rose-500" 
+                  className="[&_[role=slider]]:w-[18px] [&_[role=slider]]:h-[18px] [&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg [&_[data-radix-slider-track]]:h-[5px] [&_[data-radix-slider-track]]:bg-white/15 [&_[data-radix-slider-range]]:bg-rose-500" 
                 />
-                <div className="flex justify-between mt-1 text-[11px] font-medium text-white/50">
+                <div className="flex justify-between mt-1.5 text-[11px] font-semibold text-white/50 tabular-nums">
                   <span>{formatTime(safeProgress)}</span>
                   <span>-{formatTime(Math.max(0, timeRemaining))}</span>
                 </div>
               </div>
 
-              {/* Main Controls - centered play button with haptics */}
-              <div className="flex items-center justify-center gap-6">
+              {/* Main Controls - centered with Origin OS bounce */}
+              <div className="flex items-center justify-center gap-5">
                 <motion.button 
-                  className={`w-12 h-12 flex items-center justify-center touch-manipulation ${shuffle ? 'text-rose-400' : 'text-white/50'}`} 
+                  className={`w-11 h-11 flex items-center justify-center touch-manipulation rounded-full ${shuffle ? 'text-rose-400 bg-rose-500/15' : 'text-white/50'}`} 
                   onClick={() => { triggerHaptic('impactLight'); toggleShuffle(); }} 
-                  whileTap={{ scale: 0.85 }} 
+                  whileTap={{ scale: 0.8 }} 
                   transition={tapSpring}
                 >
-                  <Shuffle className="w-5 h-5" />
+                  <Shuffle className="w-[18px] h-[18px]" />
                 </motion.button>
 
                 <motion.button 
-                  className="w-12 h-12 flex items-center justify-center touch-manipulation" 
+                  className="w-14 h-14 flex items-center justify-center touch-manipulation" 
                   onClick={() => { triggerHaptic('impactMedium'); prevSong(); }} 
-                  whileTap={{ scale: 0.85 }} 
+                  whileTap={{ scale: 0.8, rotate: -10 }} 
                   transition={tapSpring}
                 >
-                  <SkipBack className="w-8 h-8 text-white" fill="white" />
+                  <SkipBack className="w-9 h-9 text-white" fill="white" />
                 </motion.button>
                 
                 <motion.button 
-                  className="w-[72px] h-[72px] rounded-full bg-white flex items-center justify-center touch-manipulation"
-                  onClick={() => { triggerHaptic('impactMedium'); togglePlay(); }} 
-                  whileTap={{ scale: 0.9 }} 
-                  transition={iosSpring}
+                  className="w-[74px] h-[74px] rounded-full bg-white flex items-center justify-center touch-manipulation shadow-xl"
+                  onClick={() => { triggerHaptic('impactHeavy'); togglePlay(); }} 
+                  whileTap={{ scale: 0.88 }}
+                  whileHover={{ scale: 1.03 }}
+                  animate={{ 
+                    boxShadow: isPlaying 
+                      ? '0 0 30px 8px rgba(255,255,255,0.25)' 
+                      : '0 8px 25px -5px rgba(0,0,0,0.4)'
+                  }}
+                  transition={originBounce}
                 >
-                  {isPlaying ? (
-                    <Pause className="w-8 h-8 text-black" fill="black" />
-                  ) : (
-                    <Play className="w-8 h-8 text-black ml-1" fill="black" />
-                  )}
+                  <AnimatePresence mode="wait">
+                    {isPlaying ? (
+                      <motion.div
+                        key="pause"
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: 90 }}
+                        transition={tapSpring}
+                      >
+                        <Pause className="w-9 h-9 text-black" fill="black" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="play"
+                        initial={{ scale: 0, rotate: 90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: -90 }}
+                        transition={tapSpring}
+                      >
+                        <Play className="w-9 h-9 text-black ml-1" fill="black" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.button>
                 
                 <motion.button 
-                  className="w-12 h-12 flex items-center justify-center touch-manipulation" 
+                  className="w-14 h-14 flex items-center justify-center touch-manipulation" 
                   onClick={() => { triggerHaptic('impactMedium'); nextSong(); }} 
-                  whileTap={{ scale: 0.85 }} 
+                  whileTap={{ scale: 0.8, rotate: 10 }} 
                   transition={tapSpring}
                 >
-                  <SkipForward className="w-8 h-8 text-white" fill="white" />
+                  <SkipForward className="w-9 h-9 text-white" fill="white" />
                 </motion.button>
 
                 <motion.button 
-                  className={`w-12 h-12 flex items-center justify-center touch-manipulation ${repeat !== 'off' ? 'text-rose-400' : 'text-white/50'}`} 
+                  className={`w-11 h-11 flex items-center justify-center touch-manipulation rounded-full ${repeat !== 'off' ? 'text-rose-400 bg-rose-500/15' : 'text-white/50'}`} 
                   onClick={() => { triggerHaptic('impactLight'); toggleRepeat(); }} 
-                  whileTap={{ scale: 0.85 }} 
+                  whileTap={{ scale: 0.8 }} 
                   transition={tapSpring}
                 >
-                  {repeat === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+                  {repeat === 'one' ? <Repeat1 className="w-[18px] h-[18px]" /> : <Repeat className="w-[18px] h-[18px]" />}
                 </motion.button>
               </div>
 
-              {/* Volume slider */}
-              <AppleVolumeSlider value={volume} onChange={setVolume} />
+              {/* Volume slider - compact */}
+              <div className="pt-1">
+                <AppleVolumeSlider value={volume} onChange={setVolume} />
+              </div>
 
-              {/* Bottom actions - compact row with haptics */}
-              <div className="flex items-center justify-around pt-1 pb-2">
-                <motion.button className="w-12 h-12 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowLyrics(true); }} whileTap={{ scale: 0.85 }} transition={tapSpring}>
-                  <Mic2 className="w-5 h-5 text-white/60" />
+              {/* Bottom actions - tight row */}
+              <div className="flex items-center justify-around py-1">
+                <motion.button className="w-11 h-11 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowLyrics(true); }} whileTap={{ scale: 0.8 }} transition={tapSpring}>
+                  <Mic2 className="w-[18px] h-[18px] text-white/60" />
                 </motion.button>
 
-                <motion.button className="w-12 h-12 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowDedicationModal(true); }} whileTap={{ scale: 0.85 }} transition={tapSpring}>
-                  <Heart className="w-5 h-5 text-white/60" />
+                <motion.button className="w-11 h-11 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowDedicationModal(true); }} whileTap={{ scale: 0.8 }} transition={tapSpring}>
+                  <Heart className="w-[18px] h-[18px] text-white/60" />
                 </motion.button>
 
-                <motion.button className="w-12 h-12 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowShareModal(true); }} whileTap={{ scale: 0.85 }} transition={tapSpring}>
-                  <Share2 className="w-5 h-5 text-white/60" />
+                <motion.button className="w-11 h-11 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowShareModal(true); }} whileTap={{ scale: 0.8 }} transition={tapSpring}>
+                  <Share2 className="w-[18px] h-[18px] text-white/60" />
                 </motion.button>
                 
-                <motion.button className="w-12 h-12 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowPlaylistModal(true); }} whileTap={{ scale: 0.85 }} transition={tapSpring}>
-                  <ListMusic className="w-5 h-5 text-white/60" />
+                <motion.button className="w-11 h-11 flex items-center justify-center touch-manipulation" onClick={() => { triggerHaptic('selection'); setShowPlaylistModal(true); }} whileTap={{ scale: 0.8 }} transition={tapSpring}>
+                  <ListMusic className="w-[18px] h-[18px] text-white/60" />
                 </motion.button>
               </div>
 
-              {/* Song Reactions - compact */}
+              {/* Song Reactions - minimal spacing */}
               <SongReactions songId={currentSong.id} songTitle={currentSong.title} />
-            </div>
+            </motion.div>
           </div>
         </motion.div>
       </AnimatePresence>
