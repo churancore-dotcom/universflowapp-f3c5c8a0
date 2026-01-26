@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 interface AudioVisualizerData {
   frequencyData: Uint8Array;
@@ -8,43 +8,44 @@ interface AudioVisualizerData {
   highFrequency: number;
 }
 
+const defaultData: AudioVisualizerData = {
+  frequencyData: new Uint8Array(0),
+  averageFrequency: 0,
+  bassFrequency: 0,
+  midFrequency: 0,
+  highFrequency: 0,
+};
+
+// Throttle updates to reduce CPU usage - update every 100ms instead of every frame
+const THROTTLE_MS = 100;
+
 export const useAudioVisualizer = (audioElement: HTMLAudioElement | null, isPlaying: boolean) => {
-  const [visualizerData, setVisualizerData] = useState<AudioVisualizerData>({
-    frequencyData: new Uint8Array(0),
-    averageFrequency: 0,
-    bassFrequency: 0,
-    midFrequency: 0,
-    highFrequency: 0,
-  });
+  const [visualizerData, setVisualizerData] = useState<AudioVisualizerData>(defaultData);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const isConnectedRef = useRef(false);
 
   const connectAudio = useCallback(() => {
     if (!audioElement || isConnectedRef.current) return;
 
     try {
-      // Create or resume audio context
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
 
-      // Resume if suspended
       if (audioContextRef.current.state === 'suspended') {
         audioContextRef.current.resume();
       }
 
-      // Create analyser
       if (!analyserRef.current) {
         analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 256;
-        analyserRef.current.smoothingTimeConstant = 0.8;
+        analyserRef.current.fftSize = 128; // Smaller FFT for better performance
+        analyserRef.current.smoothingTimeConstant = 0.85;
       }
 
-      // Connect source only once
       if (!sourceRef.current) {
         try {
           sourceRef.current = audioContextRef.current.createMediaElementSource(audioElement);
@@ -52,25 +53,17 @@ export const useAudioVisualizer = (audioElement: HTMLAudioElement | null, isPlay
           analyserRef.current.connect(audioContextRef.current.destination);
           isConnectedRef.current = true;
         } catch (e) {
-          // Already connected - this is fine
-          console.warn('Audio already connected to context');
           isConnectedRef.current = true;
         }
       }
     } catch (error) {
-      console.warn('Web Audio API not available:', error);
+      console.warn('Web Audio API not available');
     }
   }, [audioElement]);
 
   const analyze = useCallback(() => {
     if (!analyserRef.current || !isPlaying) {
-      setVisualizerData({
-        frequencyData: new Uint8Array(0),
-        averageFrequency: 0,
-        bassFrequency: 0,
-        midFrequency: 0,
-        highFrequency: 0,
-      });
+      setVisualizerData(defaultData);
       return;
     }
 
@@ -78,17 +71,14 @@ export const useAudioVisualizer = (audioElement: HTMLAudioElement | null, isPlay
     const dataArray = new Uint8Array(bufferLength);
     analyserRef.current.getByteFrequencyData(dataArray);
 
-    // Calculate frequency ranges
-    const bassEnd = Math.floor(bufferLength * 0.1); // 0-10% for bass
-    const midEnd = Math.floor(bufferLength * 0.5); // 10-50% for mids
+    const bassEnd = Math.floor(bufferLength * 0.15);
+    const midEnd = Math.floor(bufferLength * 0.5);
     
     let bassSum = 0;
     let midSum = 0;
     let highSum = 0;
-    let totalSum = 0;
 
     for (let i = 0; i < bufferLength; i++) {
-      totalSum += dataArray[i];
       if (i < bassEnd) {
         bassSum += dataArray[i];
       } else if (i < midEnd) {
@@ -100,36 +90,29 @@ export const useAudioVisualizer = (audioElement: HTMLAudioElement | null, isPlay
 
     setVisualizerData({
       frequencyData: dataArray,
-      averageFrequency: totalSum / bufferLength / 255,
+      averageFrequency: (bassSum + midSum + highSum) / bufferLength / 255,
       bassFrequency: bassSum / bassEnd / 255,
       midFrequency: midSum / (midEnd - bassEnd) / 255,
       highFrequency: highSum / (bufferLength - midEnd) / 255,
     });
-
-    animationFrameRef.current = requestAnimationFrame(analyze);
   }, [isPlaying]);
 
   useEffect(() => {
     if (audioElement && isPlaying) {
       connectAudio();
-      analyze();
+      // Use setInterval instead of requestAnimationFrame for throttling
+      intervalRef.current = window.setInterval(analyze, THROTTLE_MS);
+    } else {
+      setVisualizerData(defaultData);
     }
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [audioElement, isPlaying, connectAudio, analyze]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
 
   return visualizerData;
 };

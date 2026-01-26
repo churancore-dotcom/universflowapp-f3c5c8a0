@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo, memo } from 'react';
-import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Song, usePlayer } from '@/contexts/PlayerContext';
@@ -9,7 +8,6 @@ import { useSongCache } from '@/hooks/useSongCache';
 import SongCard from '@/components/SongCard';
 import HorizontalSection from '@/components/HorizontalSection';
 import RecentlyPlayedSection from '@/components/RecentlyPlayedSection';
-
 import FeaturedArtistsSection from '@/components/FeaturedArtistsSection';
 import SleepTimerModal from '@/components/SleepTimerModal';
 import QueueDrawer from '@/components/QueueDrawer';
@@ -24,63 +22,34 @@ import AIPlaylistGenerator from '@/components/AIPlaylistGenerator';
 import OfflineIndicator from '@/components/OfflineIndicator';
 import OfflineSection from '@/components/OfflineSection';
 import { TabTransition } from '@/components/PageTransition';
-import { Sparkles, Music, Lock, ListMusic, Sliders } from 'lucide-react';
-import { iosSpring, staggerContainer } from '@/lib/animations';
+import { Music, Lock, ListMusic, Sliders } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Memoized empty state component
+// Simple empty state
 const EmptyState = memo(() => (
-  <motion.div
-    className="text-center py-16"
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={iosSpring}
-  >
-    <motion.div 
+  <div className="text-center py-16">
+    <div 
       className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
       style={{
         background: 'linear-gradient(135deg, hsl(211 100% 50% / 0.2), hsl(328 100% 54% / 0.2))',
       }}
-      initial={{ scale: 0, rotate: -20 }}
-      animate={{ scale: 1, rotate: 0 }}
-      transition={{ ...iosSpring, delay: 0.1 }}
     >
       <Music className="w-10 h-10 text-muted-foreground" />
-    </motion.div>
-    <motion.h2 
-      className="text-lg font-semibold mb-2"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-    >
-      No music yet
-    </motion.h2>
-    <motion.p 
-      className="text-muted-foreground max-w-xs mx-auto text-sm px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.3 }}
-    >
+    </div>
+    <h2 className="text-lg font-semibold mb-2">No music yet</h2>
+    <p className="text-muted-foreground max-w-xs mx-auto text-sm px-4">
       Music will appear here once an admin uploads songs to the platform.
-    </motion.p>
-  </motion.div>
+    </p>
+  </div>
 ));
 
 EmptyState.displayName = 'EmptyState';
 
-// Loading skeleton
+// Simple loading
 const LoadingSkeleton = memo(() => (
-  <motion.div 
-    className="flex justify-center py-16"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-  >
-    <motion.div 
-      className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-    />
-  </motion.div>
+  <div className="flex justify-center py-16">
+    <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+  </div>
 ));
 
 LoadingSkeleton.displayName = 'LoadingSkeleton';
@@ -101,7 +70,6 @@ const Home = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Memoized filtered songs
   const newReleases = useMemo(() => 
     songs.filter(s => (s as any).show_in_new_releases).slice(0, 10),
     [songs]
@@ -194,48 +162,36 @@ const Home = () => {
 
   return (
     <TabTransition>
-      <motion.div 
+      <div 
         className="min-h-screen bg-black pb-40 relative overflow-y-auto overflow-x-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={iosSpring}
         {...handlers}
         style={{ 
           transform: `translateY(${pullDistance}px)`,
           WebkitOverflowScrolling: 'touch',
         }}
       >
-        {/* Dynamic gradient background that responds to current song */}
+        {/* Simple gradient background */}
         <div className="absolute inset-0 pointer-events-none">
           {currentSong?.cover_url && (
-            <motion.div
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1.5 }}
-            >
-              <img
-                src={currentSong.cover_url}
-                alt=""
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] blur-[120px] opacity-[0.15] saturate-150"
-                style={{ height: '60%' }}
-              />
-            </motion.div>
+            <img
+              src={currentSong.cover_url}
+              alt=""
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] blur-[100px] opacity-[0.12]"
+              style={{ height: '50%' }}
+            />
           )}
-          {/* Mesh gradient overlay */}
           <div 
             className="absolute inset-0"
             style={{
               background: `
-                radial-gradient(ellipse 80% 50% at 50% 0%, hsl(220 100% 60% / 0.08), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 20%, hsl(330 100% 60% / 0.06), transparent),
-                radial-gradient(ellipse 50% 30% at 20% 30%, hsl(270 100% 60% / 0.05), transparent)
+                radial-gradient(ellipse 80% 50% at 50% 0%, hsl(220 100% 60% / 0.06), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 20%, hsl(330 100% 60% / 0.04), transparent)
               `,
             }}
           />
         </div>
 
-        {/* Pull to refresh indicator */}
+        {/* Pull to refresh */}
         <PullToRefreshIndicator 
           pullDistance={pullDistance} 
           isRefreshing={isRefreshing} 
@@ -243,56 +199,43 @@ const Home = () => {
           isTriggered={isTriggered}
         />
 
-        {/* Compact header - mobile optimized */}
-        <motion.header
+        {/* Header */}
+        <header
           className="sticky top-0 z-30 px-3 py-2.5 safe-area-pt"
           style={{
             background: 'rgba(0, 0, 0, 0.9)',
-            backdropFilter: 'blur(40px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
             borderBottom: '0.5px solid rgba(255, 255, 255, 0.08)',
           }}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={iosSpring}
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-white/90 flex-shrink-0">{greeting()}</p>
             
-            {/* Icons container - 48px touch targets */}
             <div className="flex items-center gap-1.5">
-              {/* Queue button */}
-              <motion.button
+              <button
                 onClick={() => setShowQueue(true)}
-                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0"
-                whileTap={{ scale: 0.9 }}
-                transition={iosSpring}
+                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0 active:scale-90 transition-transform"
               >
                 <ListMusic className="w-5 h-5 text-white/80" />
-              </motion.button>
+              </button>
 
-              {/* Equalizer button */}
-              <motion.button
+              <button
                 onClick={() => setShowEqualizer(true)}
-                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0"
-                whileTap={{ scale: 0.9 }}
-                transition={iosSpring}
+                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0 active:scale-90 transition-transform"
               >
                 <Sliders className="w-5 h-5 text-white/80" />
-              </motion.button>
+              </button>
 
-              {/* Lock Screen button */}
-              <motion.button
+              <button
                 onClick={() => setShowLockScreen(true)}
-                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0"
-                whileTap={{ scale: 0.9 }}
-                transition={iosSpring}
+                className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center glass flex-shrink-0 active:scale-90 transition-transform"
               >
                 <Lock className="w-5 h-5 text-white/80" />
-              </motion.button>
+              </button>
             </div>
           </div>
-        </motion.header>
+        </header>
 
         <main className="px-3 pt-4 relative z-10 overflow-x-hidden">
           {loading ? (
@@ -300,16 +243,9 @@ const Home = () => {
           ) : songs.length === 0 ? (
             <EmptyState />
           ) : (
-            <motion.div
-              variants={staggerContainer}
-              initial="initial"
-              animate="animate"
-              className="space-y-5"
-            >
-              {/* Offline Section - Shows when offline or has downloads */}
+            <div className="space-y-5">
               <OfflineSection isOffline={isOffline} />
 
-              {/* New Releases - TOP PRIORITY */}
               {newReleases.length > 0 && (
                 <HorizontalSection title="New Releases" subtitle="Fresh tracks just added" songs={newReleases}>
                   {newReleases.map((song, i) => (
@@ -318,7 +254,6 @@ const Home = () => {
                 </HorizontalSection>
               )}
 
-              {/* Recommended for You - 2nd priority */}
               {songs.length > 3 && (
                 <HorizontalSection title="Recommended for You" subtitle="Based on your taste" songs={recommendedSongs}>
                   {recommendedSongs.map((song, i) => (
@@ -327,14 +262,10 @@ const Home = () => {
                 </HorizontalSection>
               )}
 
-              {/* Featured Artists - Below Recommended */}
               <FeaturedArtistsSection />
 
-
-              {/* Recently Played */}
               <RecentlyPlayedSection />
 
-              {/* Trending Now */}
               {trendingSongs.length > 0 && (
                 <HorizontalSection title="Trending Now" subtitle="What's hot right now" songs={trendingSongs}>
                   {trendingSongs.map((song, i) => (
@@ -342,7 +273,7 @@ const Home = () => {
                   ))}
                 </HorizontalSection>
               )}
-            </motion.div>
+            </div>
           )}
         </main>
 
@@ -356,7 +287,7 @@ const Home = () => {
         {showVisualizer && <AudioVisualizer isOpen={showVisualizer} onClose={() => setShowVisualizer(false)} />}
         {showAIPlaylist && <AIPlaylistGenerator isOpen={showAIPlaylist} onClose={() => setShowAIPlaylist(false)} onPlaylistCreated={fetchSongs} />}
         <OfflineIndicator />
-      </motion.div>
+      </div>
     </TabTransition>
   );
 };
