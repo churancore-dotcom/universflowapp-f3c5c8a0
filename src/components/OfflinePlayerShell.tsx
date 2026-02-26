@@ -1,8 +1,9 @@
 import { memo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { WifiOff, Play, Music, HardDrive, Shuffle, Download } from 'lucide-react';
+import { WifiOff, Play, Music, HardDrive, Shuffle, Download, LogIn } from 'lucide-react';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { useDownloads } from '@/contexts/DownloadContext';
+import { useNavigate } from 'react-router-dom';
 import MiniPlayer from '@/components/MiniPlayer';
 import FullscreenPlayer from '@/components/FullscreenPlayer';
 import { triggerHaptic } from '@/hooks/useHaptics';
@@ -12,6 +13,7 @@ import appLogo from '@/assets/app-logo.png';
 const OfflinePlayerShell = memo(function OfflinePlayerShell() {
   const { playSong, currentSong, isPlaying, setQueue } = usePlayer();
   const { downloads } = useDownloads();
+  const navigate = useNavigate();
   const [storageUsed, setStorageUsed] = useState('0 MB');
 
   const cachedSongs = downloads.map(d => ({
@@ -67,9 +69,18 @@ const OfflinePlayerShell = memo(function OfflinePlayerShell() {
               {cachedSongs.length} songs • {storageUsed} used
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10">
-            <WifiOff className="w-3.5 h-3.5 text-destructive" />
-            <span className="text-[11px] font-medium text-destructive">Offline</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/auth')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 active:scale-95 transition-transform"
+            >
+              <LogIn className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[11px] font-medium text-primary">Sign In</span>
+            </button>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10">
+              <WifiOff className="w-3.5 h-3.5 text-destructive" />
+              <span className="text-[11px] font-medium text-destructive">Offline</span>
+            </div>
           </div>
         </div>
       </div>

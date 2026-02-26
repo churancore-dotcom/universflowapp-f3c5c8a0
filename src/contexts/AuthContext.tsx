@@ -59,6 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkAdminStatus(session.user.id);
       }
       setIsLoading(false);
+    }).catch(() => {
+      // Network failed — still allow app to render (user can try login)
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();

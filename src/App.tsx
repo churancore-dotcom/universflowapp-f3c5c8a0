@@ -76,9 +76,8 @@ const queryClient = new QueryClient({
 const LazyFallback = () => <div className="min-h-screen bg-background" />;
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, isOffline } = useAuth();
+  const { user, isLoading } = useAuth();
   if (isLoading) return <LazyFallback />;
-  if (!user && isOffline) return <Navigate to="/offline-player" replace />;
   if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 };
@@ -101,12 +100,10 @@ const AnimatedRoutes = () => {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={
             user ? <Navigate to="/home" replace /> : 
-            isOffline ? <Navigate to="/offline-player" replace /> : 
             <Navigate to="/auth" replace />
           } />
           <Route path="/auth" element={
             user ? <Navigate to="/home" replace /> : 
-            isOffline ? <Navigate to="/offline-player" replace /> : 
             <Auth />
           } />
           <Route path="/offline-player" element={<OfflinePlayerShell />} />
