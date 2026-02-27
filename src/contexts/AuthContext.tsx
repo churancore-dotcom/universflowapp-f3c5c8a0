@@ -177,12 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const signInRequest = supabase.auth.signInWithPassword({ email, password });
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timeout. Please try again.')), 12000)
-        );
-
-        const { data, error } = await Promise.race([signInRequest, timeout]);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
           if (isNetworkErrorMessage(error.message) && attempt < maxRetries) {
