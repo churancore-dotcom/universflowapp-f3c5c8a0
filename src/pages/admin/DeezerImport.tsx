@@ -12,6 +12,7 @@ interface DeezerTrack {
   artist: string;
   artist_id: number;
   album: string | null;
+  album_id: number | null;
   duration: number | null;
   cover_url: string | null;
   preview_url: string | null;
@@ -163,7 +164,25 @@ const DeezerImport = () => {
       audioUrl = extractData.audioUrl;
       if (!audioUrl) throw new Error('No audio URL returned');
 
-      // Step 3: Insert into database
+      // Step 3: Fetch real genre from Deezer album metadata
+      let detectedGenre = 'Pop';
+      if (track.album_id) {
+        try {
+          const { data: genreData } = await supabase.functions.invoke('deezer-search', {
+            body: { action: 'track_genre', query: String(track.album_id) },
+          });
+          if (genreData?.genre) {
+            detectedGenre = genreData.genre;
+          }
+        } catch {
+          // fallback to query-based guess
+          detectedGenre = guessGenre(track, lastQuery);
+        }
+      } else {
+        detectedGenre = guessGenre(track, lastQuery);
+      }
+
+      // Step 4: Insert into database
       const coverUrl = track.cover_url || extractData.thumbnail || thumbnail || null;
       
       // Check for duplicates
@@ -187,7 +206,7 @@ const DeezerImport = () => {
         audio_url: audioUrl,
         cover_url: coverUrl,
         duration: track.duration || extractData.duration || 0,
-        genre: guessGenre(track, lastQuery),
+        genre: detectedGenre,
         is_visible: true,
         show_in_new_releases: true,
       });
