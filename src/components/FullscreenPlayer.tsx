@@ -4,13 +4,14 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Shuffle, Repeat, 
 import { usePlayer } from '@/contexts/PlayerContext';
 import { useNavigate } from 'react-router-dom';
 import { Slider } from '@/components/ui/slider';
-import DownloadButton from './DownloadButton';
-import SaveToDeviceButton from './SaveToDeviceButton';
 import LikeButton from './LikeButton';
 import SocialShareModal from './SocialShareModal';
 import AddToPlaylistModal from './AddToPlaylistModal';
 import CreatePlaylistModal from './CreatePlaylistModal';
 import SongReactions from './SongReactions';
+import SongSuggestions from './SongSuggestions';
+import { supabase } from '@/integrations/supabase/client';
+import type { Song } from '@/contexts/PlayerContext';
 
 import { triggerHaptic } from '@/hooks/useHaptics';
 
@@ -81,9 +82,18 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   
-  const [direction, setDirection] = useState(0); // -1 prev, 1 next
+  const [direction, setDirection] = useState(0);
   const prevSongIdRef = useRef<string | null>(null);
   const navigate = useNavigate();
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
+
+  // Fetch songs for suggestions
+  useEffect(() => {
+    if (!isExpanded) return;
+    supabase.from('songs').select('id, title, artist, album, cover_url, audio_url, duration, artist_id, play_count').eq('is_visible', true).limit(100).then(({ data }) => {
+      if (data) setAllSongs(data.map(s => ({ ...s, cover_url: s.cover_url ?? undefined, album: s.album ?? undefined, duration: s.duration ?? undefined, artist_id: s.artist_id ?? undefined, play_count: s.play_count ?? 0, audio_url: s.audio_url })));
+    });
+  }, [isExpanded]);
 
   // Track song changes for animation direction
   useEffect(() => {
@@ -186,8 +196,8 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
             </div>
 
             {/* Album Art with song change animation */}
-            <div className="flex-1 flex items-center justify-center py-4">
-              <div className="relative w-[85vw] max-w-[340px] aspect-square">
+            <div className="flex-shrink-0 flex flex-col items-center pt-4">
+              <div className="relative w-[75vw] max-w-[300px] aspect-square">
                 {/* Simple glow */}
                 {isPlaying && (
                   <motion.div
@@ -230,6 +240,9 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
                   </motion.div>
                 </AnimatePresence>
               </div>
+
+              {/* Song Suggestions - right below album art */}
+              <SongSuggestions allSongs={allSongs} />
             </div>
 
             {/* Controls Section */}
@@ -264,8 +277,6 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
                 </AnimatePresence>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <LikeButton songId={currentSong.id} size="sm" />
-                  <DownloadButton song={currentSong} size="sm" />
-                  <SaveToDeviceButton song={currentSong} size="sm" />
                 </div>
               </div>
 

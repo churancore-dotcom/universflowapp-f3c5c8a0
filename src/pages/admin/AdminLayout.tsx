@@ -30,9 +30,14 @@ import {
   Globe
 } from 'lucide-react';
 
+import { 
+  Inbox
+} from 'lucide-react';
+
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
   { icon: Upload, label: 'Upload Music', path: '/admin/upload' },
+  { icon: Inbox, label: 'Song Requests', path: '/admin/song-requests' },
   { icon: Music, label: 'Manage Songs', path: '/admin/songs' },
   { icon: Users, label: 'Manage Artists', path: '/admin/artists' },
   { icon: Disc, label: 'Manage Albums', path: '/admin/albums' },
@@ -59,8 +64,6 @@ const navItems = [
   { icon: BarChart3, label: 'Backup', path: '/admin/backup' },
   { icon: Settings, label: 'Settings', path: '/admin/settings' },
   { icon: Globe, label: 'Jamendo Library', path: '/admin/jamendo' },
-  { icon: Music, label: 'YouTube Import', path: '/admin/deezer' },
-  { icon: Music, label: 'Song Requests', path: '/admin/song-requests' },
 ];
 
 const AdminLayout = () => {

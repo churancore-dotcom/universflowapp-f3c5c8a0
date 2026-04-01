@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WifiOff, AlertTriangle, ChevronDown, ChevronUp, X, RefreshCw, Shield, Smartphone, Monitor, Router } from 'lucide-react';
-
+import { supabase } from '@/integrations/supabase/client';
 import { iosSpring } from '@/lib/animations';
 
 type ConnectionStatus = 'connected' | 'checking' | 'unreachable';
@@ -21,20 +21,10 @@ const ConnectionTroubleshoot = memo(function ConnectionTroubleshoot() {
     setChecking(true);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-      // Use a lightweight fetch to the Supabase health endpoint instead of a DB query
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL || ''}/rest/v1/`,
-        {
-          method: 'HEAD',
-          signal: controller.signal,
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
-          },
-        }
-      );
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const { error } = await supabase.from('songs').select('id', { count: 'exact', head: true }).abortSignal(controller.signal);
       clearTimeout(timeout);
-      setStatus(response.ok || response.status === 400 ? 'connected' : 'unreachable');
+      setStatus(error ? 'unreachable' : 'connected');
     } catch {
       setStatus('unreachable');
     } finally {
@@ -43,14 +33,9 @@ const ConnectionTroubleshoot = memo(function ConnectionTroubleshoot() {
   }, []);
 
   useEffect(() => {
-    // Initial check after a short delay to avoid blocking render
-    const initialTimeout = setTimeout(checkConnection, 3000);
-    // Poll less aggressively - every 60 seconds instead of 30
-    const interval = setInterval(checkConnection, 60000);
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
   }, [checkConnection]);
 
   useEffect(() => {

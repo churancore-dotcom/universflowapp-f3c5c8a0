@@ -3,45 +3,37 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Cobalt instances (most reliable for YouTube extraction)
-const COBALT_INSTANCES = [
-  'https://api.cobalt.tools',
-  'https://cobalt-api.kwiatekmiki.com',
-  'https://cobalt.canine.tools',
-  'https://co.eepy.today',
-  'https://cobalt-backend.canine.tools',
-  'https://api.cobalt.tskau.team',
-];
-
-// Piped instances (YouTube proxy)
+// Piped instances (community-run YouTube proxies)
 const PIPED_INSTANCES = [
   'https://pipedapi.kavin.rocks',
+  'https://api.piped.private.coffee',
+  'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',
+  'https://pipedapi.syncpundit.io',
+  'https://api-piped.mha.fi',
+  'https://pipedapi.leptons.xyz',
+  'https://piped-api.lunar.icu',
+  'https://pipedapi.r4fo.com',
   'https://pipedapi.adminforge.de',
   'https://api.piped.yt',
-  'https://pipedapi.r4fo.com',
-  'https://pipedapi.leptons.xyz',
-  'https://piapi.ggtyler.dev',
-  'https://watchapi.whatever.social',
-  'https://api.piped.privacydev.net',
   'https://pipedapi.drgns.space',
-  'https://pipedapi.smnz.de',
 ];
 
-// Invidious instances (alternative YouTube proxy)
+// Invidious instances (alternative YouTube proxy network)
 const INVIDIOUS_INSTANCES = [
   'https://inv.nadeko.net',
+  'https://invidious.private.coffee',
   'https://invidious.nerdvpn.de',
   'https://yt.artemislena.eu',
   'https://invidious.fdn.fr',
   'https://invidious.perennialte.ch',
+  'https://invidious.slipfox.xyz',
   'https://invidious.jing.rocks',
   'https://iv.nboez.cc',
   'https://invidious.protokolla.fi',
-  'https://invidious.privacyredirect.com',
-  'https://iv.datura.network',
 ];
 
 interface ExtractionResult {
@@ -96,75 +88,10 @@ function isPlaylistUrl(url: string): boolean {
   }
 }
 
-// Try Cobalt API instance
-async function tryCobaltInstance(apiUrl: string, videoId: string): Promise<ExtractionResult | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-  try {
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    
-    const response = await fetch(`${apiUrl}/`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-      body: JSON.stringify({
-        url: youtubeUrl,
-        downloadMode: 'audio',
-        audioFormat: 'mp3',
-        audioBitrate: '128',
-      }),
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.log(`  ✗ [COBALT] ${new URL(apiUrl).hostname}: HTTP ${response.status} - ${text.substring(0, 100)}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (data.status === 'error') {
-      console.log(`  ✗ [COBALT] ${new URL(apiUrl).hostname}: ${data.error?.code || 'unknown error'}`);
-      return null;
-    }
-
-    // Cobalt returns tunnel or redirect with a URL
-    const audioUrl = data.url;
-    if (!audioUrl) {
-      console.log(`  ✗ [COBALT] ${new URL(apiUrl).hostname}: No URL in response (status: ${data.status})`);
-      return null;
-    }
-
-    console.log(`  ✓ [COBALT] ${new URL(apiUrl).hostname}: Got audio URL (status: ${data.status})`);
-
-    // Try to get metadata from the filename or response
-    return {
-      success: true,
-      audioUrl: audioUrl,
-      title: data.filename?.replace(/\.[^/.]+$/, '') || undefined,
-      platform: 'YouTube',
-    };
-
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-    const err = error as Error;
-    const msg = err.name === 'AbortError' ? 'Timeout' : (err.message?.substring(0, 40) || 'Error');
-    console.log(`  ✗ [COBALT] ${new URL(apiUrl).hostname}: ${msg}`);
-    return null;
-  }
-}
-
 // Try a Piped instance
 async function tryPipedInstance(apiUrl: string, videoId: string): Promise<ExtractionResult | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(
@@ -182,7 +109,6 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
 
     if (!response.ok) {
       console.log(`  ✗ ${new URL(apiUrl).hostname}: HTTP ${response.status}`);
-      await response.text(); // consume body
       return null;
     }
 
@@ -214,7 +140,7 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
       success: true,
       audioUrl: bestStream.url,
       title: data.title,
-      artist: data.uploader?.replace(/ - Topic$/, ''),
+      artist: data.uploader,
       thumbnail: data.thumbnailUrl,
       duration: data.duration,
       platform: 'YouTube',
@@ -232,7 +158,7 @@ async function tryPipedInstance(apiUrl: string, videoId: string): Promise<Extrac
 // Try an Invidious instance
 async function tryInvidiousInstance(apiUrl: string, videoId: string): Promise<ExtractionResult | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(
@@ -250,7 +176,6 @@ async function tryInvidiousInstance(apiUrl: string, videoId: string): Promise<Ex
 
     if (!response.ok) {
       console.log(`  ✗ [INV] ${new URL(apiUrl).hostname}: HTTP ${response.status}`);
-      await response.text(); // consume body
       return null;
     }
 
@@ -300,7 +225,7 @@ async function tryInvidiousInstance(apiUrl: string, videoId: string): Promise<Ex
       success: true,
       audioUrl: bestFormat.url,
       title: data.title,
-      artist: data.author?.replace(/ - Topic$/, ''),
+      artist: data.author,
       thumbnail: thumbnail,
       duration: data.lengthSeconds,
       platform: 'YouTube',
@@ -315,47 +240,19 @@ async function tryInvidiousInstance(apiUrl: string, videoId: string): Promise<Ex
   }
 }
 
-// Main extraction function - tries Cobalt first, then Piped, then Invidious
+// Main extraction function - tries Piped first, then Invidious as fallback
 async function extractFromYouTube(videoId: string): Promise<ExtractionResult> {
   console.log(`\n=== Extracting YouTube video: ${videoId} ===`);
   
   // Shuffle instances for load distribution
-  const cobaltInstances = [...COBALT_INSTANCES].sort(() => Math.random() - 0.5).slice(0, 6);
-  const pipedInstances = [...PIPED_INSTANCES].sort(() => Math.random() - 0.5).slice(0, 6);
-  const invidiousInstances = [...INVIDIOUS_INSTANCES].sort(() => Math.random() - 0.5).slice(0, 6);
-
-  // Try Cobalt first (most reliable, batches of 3)
-  console.log(`\nTrying ${cobaltInstances.length} Cobalt instances...`);
-  for (let i = 0; i < cobaltInstances.length; i += 3) {
-    const batch = cobaltInstances.slice(i, i + 3);
-    console.log(`Cobalt Batch ${Math.floor(i/3) + 1}:`);
-    
-    const results = await Promise.all(
-      batch.map(instance => tryCobaltInstance(instance, videoId))
-    );
-
-    const success = results.find(r => r?.success);
-    if (success) {
-      // Cobalt may not return metadata, try to get it from Piped quickly
-      if (!success.title || !success.artist) {
-        console.log('Getting metadata from Piped...');
-        const metaResult = await tryPipedInstance(pipedInstances[0], videoId);
-        if (metaResult?.success) {
-          success.title = success.title || metaResult.title;
-          success.artist = success.artist || metaResult.artist;
-          success.thumbnail = success.thumbnail || metaResult.thumbnail;
-          success.duration = success.duration || metaResult.duration;
-        }
-      }
-      return success;
-    }
-  }
+  const pipedInstances = [...PIPED_INSTANCES].sort(() => Math.random() - 0.5);
+  const invidiousInstances = [...INVIDIOUS_INSTANCES].sort(() => Math.random() - 0.5);
   
-  // Try Piped instances (batches of 3)
-  console.log(`\nCobalt failed. Trying ${pipedInstances.length} Piped instances...`);
-  for (let i = 0; i < pipedInstances.length; i += 3) {
-    const batch = pipedInstances.slice(i, i + 3);
-    console.log(`Piped Batch ${Math.floor(i/3) + 1}:`);
+  // Try Piped instances first (batches of 6)
+  console.log(`\nTrying ${pipedInstances.length} Piped instances...`);
+  for (let i = 0; i < pipedInstances.length; i += 6) {
+    const batch = pipedInstances.slice(i, i + 6);
+    console.log(`Piped Batch ${Math.floor(i/6) + 1}:`);
     
     const results = await Promise.all(
       batch.map(instance => tryPipedInstance(instance, videoId))
@@ -367,11 +264,11 @@ async function extractFromYouTube(videoId: string): Promise<ExtractionResult> {
     }
   }
   
-  // Fallback to Invidious instances (batches of 3)
+  // Fallback to Invidious instances (batches of 5)
   console.log(`\nPiped failed. Trying ${invidiousInstances.length} Invidious instances...`);
-  for (let i = 0; i < invidiousInstances.length; i += 3) {
-    const batch = invidiousInstances.slice(i, i + 3);
-    console.log(`Invidious Batch ${Math.floor(i/3) + 1}:`);
+  for (let i = 0; i < invidiousInstances.length; i += 5) {
+    const batch = invidiousInstances.slice(i, i + 5);
+    console.log(`Invidious Batch ${Math.floor(i/5) + 1}:`);
     
     const results = await Promise.all(
       batch.map(instance => tryInvidiousInstance(instance, videoId))

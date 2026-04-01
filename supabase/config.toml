@@ -5,12 +5,3 @@ verify_jwt = false
 
 [functions.jamendo-search]
 verify_jwt = false
-
-[functions.deezer-search]
-verify_jwt = false
-
-[functions.youtube-search]
-verify_jwt = false
-
-[functions.youtube-stream]
-verify_jwt = false
