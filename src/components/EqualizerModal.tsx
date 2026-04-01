@@ -142,9 +142,9 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
     setBands(defaultBands);
     setBassBoost(0);
     setReverb(0);
-    setSpatialAudio(false);
     setPlaybackSpeed(1);
     setActivePreset('Flat');
+    audioEngine.set8D(false);
     if (audioElement) audioElement.playbackRate = 1;
     toast.success('Equalizer reset');
   }, [audioElement]);
