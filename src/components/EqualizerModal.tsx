@@ -85,7 +85,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   const [spatialAudio, setSpatialAudio] = useState(() => { try { return localStorage.getItem('eq_spatial') === 'true'; } catch { return false; } });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => { try { return Number(localStorage.getItem('eq_speed')) || 1; } catch { return 1; } });
   const [activePreset, setActivePreset] = useState<string | null>(() => { try { return localStorage.getItem('eq_preset') || 'Flat'; } catch { return 'Flat'; } });
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(audioEngine.connected);
 
   // Persist settings
   useEffect(() => {
@@ -104,6 +104,8 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
     if (!audioElement || !isOpen) return;
     let cancelled = false;
     (async () => {
+      // Resume context first (needed for user gesture requirement)
+      await audioEngine.resume();
       const ok = await audioEngine.bind(audioElement);
       if (cancelled) return;
       setConnected(ok);
