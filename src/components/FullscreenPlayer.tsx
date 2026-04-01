@@ -196,8 +196,8 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
             </div>
 
             {/* Album Art with song change animation */}
-            <div className="flex-1 flex items-center justify-center py-4">
-              <div className="relative w-[85vw] max-w-[340px] aspect-square">
+            <div className="flex-shrink-0 flex flex-col items-center pt-4">
+              <div className="relative w-[75vw] max-w-[300px] aspect-square">
                 {/* Simple glow */}
                 {isPlaying && (
                   <motion.div
