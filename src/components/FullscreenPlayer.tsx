@@ -84,9 +84,18 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   
-  const [direction, setDirection] = useState(0); // -1 prev, 1 next
+  const [direction, setDirection] = useState(0);
   const prevSongIdRef = useRef<string | null>(null);
   const navigate = useNavigate();
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
+
+  // Fetch songs for suggestions
+  useEffect(() => {
+    if (!isExpanded) return;
+    supabase.from('songs').select('id, title, artist, album, cover_url, audio_url, duration, artist_id, play_count').eq('is_visible', true).limit(100).then(({ data }) => {
+      if (data) setAllSongs(data.map(s => ({ ...s, cover_url: s.cover_url ?? undefined, album: s.album ?? undefined, duration: s.duration ?? undefined, artist_id: s.artist_id ?? undefined, play_count: s.play_count ?? 0, audio_url: s.audio_url })));
+    });
+  }, [isExpanded]);
 
   // Track song changes for animation direction
   useEffect(() => {
