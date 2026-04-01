@@ -282,9 +282,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     audioRef.current.volume = volume;
     audioRef.current.currentTime = 0;
     
-    // CRITICAL: Bind to audio engine BEFORE playing so createMediaElementSource
-    // doesn't hijack output mid-playback and cause audio stops
-    audioEngine.bind(audioRef.current).catch(() => {});
+    // CRITICAL: Must await bind so audio routes through the EQ graph
+    // before play() starts, otherwise filters have no effect
+    try {
+      await audioEngine.bind(audioRef.current);
+    } catch {}
     
     audioRef.current.load();
     const playPromise = audioRef.current.play();
