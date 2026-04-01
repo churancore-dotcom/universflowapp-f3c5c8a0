@@ -26,6 +26,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Support = lazy(() => import("./pages/Support"));
 import OfflinePlayerShell from "./components/OfflinePlayerShell";
 const Offline = lazy(() => import("./pages/Offline"));
+const SongRequest = lazy(() => import("./pages/SongRequest"));
 
 const DownloadQueuePanel = lazy(() => import("./components/DownloadQueuePanel"));
 const PrerollAd = lazy(() => import("./components/ads/PrerollAd"));
@@ -63,6 +64,7 @@ const UserEngagement = lazy(() => import("./pages/admin/UserEngagement"));
 const ABTesting = lazy(() => import("./pages/admin/ABTesting"));
 const SecurityCenter = lazy(() => import("./pages/admin/SecurityCenter"));
 const JamendoBrowse = lazy(() => import("./pages/admin/JamendoBrowse"));
+const AdminSongRequests = lazy(() => import("./pages/admin/SongRequests"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,10 +121,12 @@ const AnimatedRoutes = () => {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           <Route path="/offline" element={<ProtectedRoute><Offline /></ProtectedRoute>} />
+          <Route path="/request-song" element={<ProtectedRoute><SongRequest /></ProtectedRoute>} />
           
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminDashboard />} />
             <Route path="upload" element={<UploadMusic />} />
+            <Route path="song-requests" element={<AdminSongRequests />} />
             <Route path="songs" element={<ManageSongs />} />
             <Route path="artists" element={<ManageArtists />} />
             <Route path="albums" element={<ManageAlbums />} />
