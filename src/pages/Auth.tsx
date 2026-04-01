@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { FadeTransition } from '@/components/PageTransition';
 import appLogo from '@/assets/app-logo.png';
 
-const Auth = () => {
+const Auth = forwardRef<HTMLDivElement>((_props, ref) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +32,13 @@ const Auth = () => {
       if (isLogin) {
         const { error, isAdmin } = await signIn(email, password);
         if (error) {
-          toast.error(error.message);
+          // Detect network/connection errors vs auth errors
+          const msg = error.message?.toLowerCase() || '';
+          if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('connection')) {
+            toast.error('Server unreachable. Try switching to mobile data or change your DNS to 8.8.8.8', { duration: 6000 });
+          } else {
+            toast.error(error.message);
+          }
         } else {
           toast.success('Welcome back!');
           navigate(isAdmin ? '/admin' : '/home');
@@ -40,21 +46,26 @@ const Auth = () => {
       } else {
         const { error } = await signUp(email, password);
         if (error) {
-          toast.error(error.message);
+          const msg = error.message?.toLowerCase() || '';
+          if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('connection')) {
+            toast.error('Server unreachable. Try switching to mobile data or change your DNS to 8.8.8.8', { duration: 6000 });
+          } else {
+            toast.error(error.message);
+          }
         } else {
           toast.success('Account created successfully!');
           navigate('/home');
         }
       }
     } catch {
-      toast.error('Something went wrong. Please try again.');
+      toast.error('Connection failed. Try mobile data or change DNS to 8.8.8.8', { duration: 6000 });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <FadeTransition>
+    <FadeTransition ref={ref}>
       <div className="h-[100dvh] bg-background flex flex-col items-center justify-center p-5 relative overflow-hidden">
         {/* Background gradient */}
         <div
@@ -235,6 +246,7 @@ const Auth = () => {
       </div>
     </FadeTransition>
   );
-};
+});
+Auth.displayName = 'Auth';
 
 export default Auth;

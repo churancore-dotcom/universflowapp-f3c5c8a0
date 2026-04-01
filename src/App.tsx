@@ -1,8 +1,8 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, forwardRef } from 'react';
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, NavigateProps } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
@@ -15,6 +15,12 @@ import SEOHead from "./components/SEOHead";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Ref-safe Navigate wrapper for AnimatePresence
+const AnimatedNavigate = forwardRef<HTMLDivElement, NavigateProps>((props, ref) => (
+  <div ref={ref} style={{ display: 'none' }}><Navigate {...props} /></div>
+));
+AnimatedNavigate.displayName = 'AnimatedNavigate';
+
 // Lazy load all non-critical routes
 const Home = lazy(() => import("./pages/Home"));
 const Search = lazy(() => import("./pages/Search"));
@@ -26,7 +32,8 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Support = lazy(() => import("./pages/Support"));
 import OfflinePlayerShell from "./components/OfflinePlayerShell";
 const Offline = lazy(() => import("./pages/Offline"));
-const SongRequest = lazy(() => import("./pages/SongRequest"));
+const WidgetPreview = lazy(() => import("./pages/WidgetPreview"));
+const RequestSong = lazy(() => import("./pages/RequestSong"));
 
 const DownloadQueuePanel = lazy(() => import("./components/DownloadQueuePanel"));
 const PrerollAd = lazy(() => import("./components/ads/PrerollAd"));
@@ -64,7 +71,8 @@ const UserEngagement = lazy(() => import("./pages/admin/UserEngagement"));
 const ABTesting = lazy(() => import("./pages/admin/ABTesting"));
 const SecurityCenter = lazy(() => import("./pages/admin/SecurityCenter"));
 const JamendoBrowse = lazy(() => import("./pages/admin/JamendoBrowse"));
-const AdminSongRequests = lazy(() => import("./pages/admin/SongRequests"));
+const DeezerImport = lazy(() => import("./pages/admin/DeezerImport"));
+const SongRequests = lazy(() => import("./pages/admin/SongRequests"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,19 +90,19 @@ const LazyFallback = () => <div className="min-h-screen bg-background" />;
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LazyFallback />;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <AnimatedNavigate to="/auth" replace />;
   return <>{children}</>;
 };
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAdmin, isLoading } = useAuth();
   if (isLoading) return <LazyFallback />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) return <Navigate to="/home" replace />;
+  if (!user) return <AnimatedNavigate to="/auth" replace />;
+  if (!isAdmin) return <AnimatedNavigate to="/home" replace />;
   return <>{children}</>;
 };
 
-const AnimatedRoutes = () => {
+const AnimatedRoutes = forwardRef<HTMLDivElement>((_props, ref) => {
   const location = useLocation();
   const { user, isOffline } = useAuth();
 
@@ -104,11 +112,11 @@ const AnimatedRoutes = () => {
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={
-            user ? <Navigate to="/home" replace /> : 
-            <Navigate to="/auth" replace />
+            user ? <AnimatedNavigate to="/home" replace /> : 
+            <AnimatedNavigate to="/auth" replace />
           } />
           <Route path="/auth" element={
-            user ? <Navigate to="/home" replace /> : 
+            user ? <AnimatedNavigate to="/home" replace /> : 
             <Auth />
           } />
           <Route path="/offline-player" element={<OfflinePlayerShell />} />
@@ -121,12 +129,12 @@ const AnimatedRoutes = () => {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           <Route path="/offline" element={<ProtectedRoute><Offline /></ProtectedRoute>} />
-          <Route path="/request-song" element={<ProtectedRoute><SongRequest /></ProtectedRoute>} />
+          <Route path="/widgets" element={<ProtectedRoute><WidgetPreview /></ProtectedRoute>} />
+          <Route path="/request-song" element={<ProtectedRoute><RequestSong /></ProtectedRoute>} />
           
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminDashboard />} />
             <Route path="upload" element={<UploadMusic />} />
-            <Route path="song-requests" element={<AdminSongRequests />} />
             <Route path="songs" element={<ManageSongs />} />
             <Route path="artists" element={<ManageArtists />} />
             <Route path="albums" element={<ManageAlbums />} />
@@ -153,6 +161,8 @@ const AnimatedRoutes = () => {
             <Route path="ab-testing" element={<ABTesting />} />
             <Route path="security" element={<SecurityCenter />} />
             <Route path="jamendo" element={<JamendoBrowse />} />
+            <Route path="deezer" element={<DeezerImport />} />
+            <Route path="song-requests" element={<SongRequests />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -160,20 +170,25 @@ const AnimatedRoutes = () => {
     </Suspense>
     </NavDirectionProvider>
   );
-};
+});
+AnimatedRoutes.displayName = 'AnimatedRoutes';
 
 const PrerollAdWrapper = () => {
-  const { showPrerollAd, onPrerollAdComplete, adType } = usePlayer();
-  return (
-    <Suspense fallback={null}>
-      <PrerollAd 
-        isOpen={showPrerollAd} 
-        onComplete={onPrerollAdComplete}
-        onSkip={onPrerollAdComplete}
-        adType={adType}
-      />
-    </Suspense>
-  );
+  try {
+    const { showPrerollAd, onPrerollAdComplete, adType } = usePlayer();
+    return (
+      <Suspense fallback={null}>
+        <PrerollAd 
+          isOpen={showPrerollAd} 
+          onComplete={onPrerollAdComplete}
+          onSkip={onPrerollAdComplete}
+          adType={adType}
+        />
+      </Suspense>
+    );
+  } catch {
+    return null;
+  }
 };
 
 const AppContent = () => {

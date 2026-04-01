@@ -1,16 +1,16 @@
-import { useState, useCallback, useEffect, useRef, memo } from 'react';
+
+import { useState, useCallback, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, RotateCcw, Volume2, Zap, Waves, Music2, Headphones, Globe } from 'lucide-react';
+import { X, Sparkles, RotateCcw, Volume2, Zap, Waves, Music2, Headphones, Radio } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { iosSpring } from '@/lib/animations';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
+import { audioEngine } from '@/lib/equalizer';
 
 interface EqualizerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  audioContext?: AudioContext | null;
-  sourceNode?: MediaElementAudioSourceNode | null;
 }
 
 interface EQBand {
@@ -20,43 +20,40 @@ interface EQBand {
 }
 
 interface Preset {
-  id: string;
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ReactNode;
   bands: number[];
   bassBoost: number;
 }
 
 const presets: Preset[] = [
-  { id: 'flat', name: 'Flat', icon: Music2, bands: [0, 0, 0, 0, 0, 0], bassBoost: 0 },
-  { id: 'bass-boost', name: 'Bass Boost', icon: Zap, bands: [6, 5, 3, 0, -1, -2], bassBoost: 50 },
-  { id: 'treble-boost', name: 'Treble Boost', icon: Sparkles, bands: [-2, -1, 0, 2, 4, 5], bassBoost: 0 },
-  { id: 'vocal', name: 'Vocal', icon: Volume2, bands: [-2, 0, 3, 4, 2, 0], bassBoost: 0 },
-  { id: '8d-audio', name: '8D Audio', icon: Globe, bands: [1, 0, -1, 0, 1, 2], bassBoost: 20 },
-  { id: 'phonk', name: 'Phonk', icon: Headphones, bands: [7, 5, 1, -1, 2, 4], bassBoost: 60 },
-  { id: 'deep-bass', name: 'Deep Bass', icon: Waves, bands: [8, 6, 3, 0, -2, -3], bassBoost: 80 },
-  { id: 'concert', name: 'Concert', icon: Sparkles, bands: [3, 1, 0, 2, 3, 4], bassBoost: 10 },
+  { name: 'Flat', icon: <Music2 className="w-4 h-4" />, bands: [0, 0, 0, 0, 0, 0, 0, 0], bassBoost: 0 },
+  { name: 'Bass Boost', icon: <Zap className="w-4 h-4" />, bands: [10, 8, 5, 2, 0, -1, -2, -2], bassBoost: 75 },
+  { name: 'Treble Boost', icon: <Sparkles className="w-4 h-4" />, bands: [-3, -2, 0, 2, 4, 7, 9, 10], bassBoost: 0 },
+  { name: 'Vocal', icon: <Volume2 className="w-4 h-4" />, bands: [-4, -2, 2, 6, 7, 4, 1, 0], bassBoost: 0 },
+  { name: 'Phonk', icon: <Radio className="w-4 h-4" />, bands: [10, 7, 4, 0, -3, 2, 4, 5], bassBoost: 85 },
+  { name: 'Deep Bass', icon: <Headphones className="w-4 h-4" />, bands: [12, 10, 7, 3, 0, -2, -3, -4], bassBoost: 100 },
+  { name: 'Rock', icon: <Sparkles className="w-4 h-4" />, bands: [6, 4, -1, -2, 1, 4, 6, 7], bassBoost: 30 },
+  { name: 'Pop', icon: <Music2 className="w-4 h-4" />, bands: [-1, 3, 5, 6, 4, 1, -1, -2], bassBoost: 10 },
 ];
 
 const defaultBands: EQBand[] = [
-  { frequency: 60, gain: 0, label: '60Hz' },
-  { frequency: 230, gain: 0, label: '230Hz' },
-  { frequency: 910, gain: 0, label: '910Hz' },
-  { frequency: 3600, gain: 0, label: '3.6kHz' },
-  { frequency: 14000, gain: 0, label: '14kHz' },
-  { frequency: 20000, gain: 0, label: '20kHz' },
+  { frequency: 32, gain: 0, label: '32Hz' },
+  { frequency: 64, gain: 0, label: '64Hz' },
+  { frequency: 125, gain: 0, label: '125Hz' },
+  { frequency: 500, gain: 0, label: '500Hz' },
+  { frequency: 1000, gain: 0, label: '1kHz' },
+  { frequency: 4000, gain: 0, label: '4kHz' },
+  { frequency: 8000, gain: 0, label: '8kHz' },
+  { frequency: 16000, gain: 0, label: '16kHz' },
 ];
 
-interface FrequencySliderProps {
-  band: EQBand;
-  index: number;
-  onChange: (index: number, value: number) => void;
-}
-
-function FrequencySliderComponent({ band, index, onChange }: FrequencySliderProps) {
+function FrequencySliderComponent({ band, index, onChange }: { band: EQBand; index: number; onChange: (i: number, v: number) => void }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <span className="text-[10px] text-muted-foreground font-mono">{band.gain > 0 ? '+' : ''}{band.gain}dB</span>
+      <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
+        {band.gain > 0 ? '+' : ''}{band.gain}
+      </span>
       <div className="h-28 flex items-center">
         <Slider
           orientation="vertical"
@@ -68,112 +65,87 @@ function FrequencySliderComponent({ band, index, onChange }: FrequencySliderProp
           className="h-full"
         />
       </div>
-      <span className="text-[10px] text-muted-foreground/70">{band.label}</span>
+      <span className="text-[9px] text-muted-foreground/70">{band.label}</span>
     </div>
   );
 }
-
 const FrequencySlider = memo(FrequencySliderComponent);
 FrequencySlider.displayName = 'FrequencySlider';
 
 const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   const { audioElement } = usePlayer();
-  const [bands, setBands] = useState<EQBand[]>(defaultBands);
-  const [bassBoost, setBassBoost] = useState(0);
-  const [activePreset, setActivePreset] = useState<string>('flat');
-  const [isConnected, setIsConnected] = useState(false);
+  const [bands, setBands] = useState<EQBand[]>(() => {
+    try { const s = localStorage.getItem('eq_bands'); if (s) return JSON.parse(s); } catch {} return defaultBands;
+  });
+  const [bassBoost, setBassBoost] = useState(() => { try { return Number(localStorage.getItem('eq_bass')) || 0; } catch { return 0; } });
+  const [playbackSpeed, setPlaybackSpeed] = useState(() => { try { return Number(localStorage.getItem('eq_speed')) || 1; } catch { return 1; } });
+  const [activePreset, setActivePreset] = useState<string | null>(() => { try { return localStorage.getItem('eq_preset') || 'Flat'; } catch { return 'Flat'; } });
+  const [connected, setConnected] = useState(false);
 
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
-  const gainNodeRef = useRef<GainNode | null>(null);
-
-  // Initialize audio context and connect to audio element
+  // Persist
   useEffect(() => {
-    if (!audioElement || isConnected) return;
-
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        console.warn('AudioContext not supported');
-        return;
-      }
+      localStorage.setItem('eq_bands', JSON.stringify(bands));
+      localStorage.setItem('eq_bass', String(bassBoost));
+      localStorage.setItem('eq_speed', String(playbackSpeed));
+      if (activePreset) localStorage.setItem('eq_preset', activePreset);
+    } catch {}
+  }, [bands, bassBoost, playbackSpeed, activePreset]);
 
-      const ctx = new AudioContextClass();
-      audioContextRef.current = ctx;
-
-      const source = ctx.createMediaElementSource(audioElement);
-      sourceNodeRef.current = source;
-
-      const filters = defaultBands.map((band) => {
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'peaking';
-        filter.frequency.value = band.frequency;
-        filter.Q.value = 1;
-        filter.gain.value = band.gain;
-        return filter;
-      });
-      eqFiltersRef.current = filters;
-
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 1;
-      gainNodeRef.current = gainNode;
-
-      source.connect(filters[0]);
-      for (let i = 0; i < filters.length - 1; i++) {
-        filters[i].connect(filters[i + 1]);
-      }
-      filters[filters.length - 1].connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      setIsConnected(true);
-    } catch (error) {
-      console.error('Failed to initialize equalizer:', error);
-    }
-
-    return () => {};
-  }, [audioElement, isConnected]);
-
-  // Apply EQ changes
+  // On open: resume + bind if needed + push settings
   useEffect(() => {
-    if (!eqFiltersRef.current.length) return;
-    bands.forEach((band, index) => {
-      if (eqFiltersRef.current[index]) {
-        eqFiltersRef.current[index].gain.value = band.gain;
+    if (!isOpen) return;
+    (async () => {
+      await audioEngine.resume();
+      if (!audioEngine.connected && audioElement) {
+        await audioEngine.bind(audioElement);
       }
-    });
-  }, [bands]);
+      setConnected(audioEngine.connected);
+      if (audioEngine.connected) {
+        audioEngine.setBands(bands.map(b => b.gain));
+        audioEngine.setBassBoost(bassBoost, bands.map(b => b.gain));
+      }
+    })();
+  }, [isOpen, audioElement]);
 
-  // Apply bass boost
+  // Push band changes
   useEffect(() => {
-    if (!eqFiltersRef.current.length) return;
-    const boostAmount = bassBoost / 10;
-    if (eqFiltersRef.current[0]) {
-      eqFiltersRef.current[0].gain.value = bands[0].gain + boostAmount;
-    }
-    if (eqFiltersRef.current[1]) {
-      eqFiltersRef.current[1].gain.value = bands[1].gain + (boostAmount * 0.5);
-    }
-  }, [bassBoost, bands]);
+    if (!isOpen) return;
+    setConnected(audioEngine.connected);
+    if (audioEngine.connected) audioEngine.setBands(bands.map(b => b.gain));
+  }, [bands, isOpen]);
+
+  // Push bass boost
+  useEffect(() => {
+    if (!isOpen) return;
+    if (audioEngine.connected) audioEngine.setBassBoost(bassBoost, bands.map(b => b.gain));
+  }, [bassBoost, bands, isOpen]);
+
+  // Playback speed
+  useEffect(() => {
+    if (audioElement) audioElement.playbackRate = playbackSpeed;
+  }, [playbackSpeed, audioElement]);
 
   const handleBandChange = useCallback((index: number, value: number) => {
     setBands(prev => prev.map((b, i) => i === index ? { ...b, gain: value } : b));
-    setActivePreset('custom');
+    setActivePreset(null);
   }, []);
 
   const handlePresetSelect = useCallback((preset: Preset) => {
     setBands(prev => prev.map((b, i) => ({ ...b, gain: preset.bands[i] ?? 0 })));
     setBassBoost(preset.bassBoost);
-    setActivePreset(preset.id);
+    setActivePreset(preset.name);
     toast.success(`${preset.name} preset applied`);
   }, []);
 
   const handleReset = useCallback(() => {
     setBands(defaultBands);
     setBassBoost(0);
-    setActivePreset('flat');
+    setPlaybackSpeed(1);
+    setActivePreset('Flat');
+    if (audioElement) audioElement.playbackRate = 1;
     toast.success('Equalizer reset');
-  }, []);
+  }, [audioElement]);
 
   if (!isOpen) return null;
 
@@ -192,7 +164,6 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
           exit={{ opacity: 0 }}
           onClick={onClose}
         />
-
         <motion.div
           className="relative w-full max-w-lg mx-4 mb-4 rounded-3xl overflow-hidden"
           style={{
@@ -213,105 +184,87 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
               <div>
                 <h2 className="text-lg font-semibold">Equalizer</h2>
                 <p className="text-xs text-muted-foreground">
-                  {isConnected ? 'Connected' : 'Play a song to connect'}
+                  {connected ? '● Connected' : 'Play a song to connect'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <motion.button
-                onClick={handleReset}
-                className="w-10 h-10 rounded-full flex items-center justify-center glass"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <motion.button onClick={handleReset} className="w-10 h-10 rounded-full flex items-center justify-center glass" whileTap={{ scale: 0.95 }}>
                 <RotateCcw className="w-4 h-4 text-muted-foreground" />
               </motion.button>
-              <motion.button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full flex items-center justify-center glass"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <motion.button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center glass" whileTap={{ scale: 0.95 }}>
                 <X className="w-5 h-5" />
               </motion.button>
             </div>
           </div>
 
           <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
-            {/* Presets - 2x4 Grid */}
+            {/* Presets */}
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-3">Presets</h3>
               <div className="grid grid-cols-4 gap-2">
-                {presets.map((preset) => {
-                  const Icon = preset.icon;
-                  const isSelected = activePreset === preset.id;
-                  return (
-                    <motion.button
-                      key={preset.id}
-                      onClick={() => handlePresetSelect(preset)}
-                      className="relative flex flex-col items-center gap-2 py-3 px-2 rounded-xl overflow-hidden transition-all"
-                      style={{
-                        background: isSelected
-                          ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(270 80% 55%))'
-                          : 'rgba(28, 28, 30, 0.8)',
-                        border: isSelected
-                          ? '1px solid hsl(var(--primary) / 0.6)'
-                          : '1px solid rgba(255, 255, 255, 0.06)',
-                      }}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
-                    >
-                      <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
-                      <span className={`text-[11px] font-medium leading-tight text-center ${isSelected ? 'text-white' : 'text-muted-foreground'}`}>
-                        {preset.name}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* EQ Bands */}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Frequency Bands</h3>
-              <div
-                className="flex justify-between px-3 py-4 rounded-2xl"
-                style={{
-                  background: 'rgba(28, 28, 30, 0.8)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                {bands.map((band, index) => (
-                  <FrequencySlider
-                    key={band.frequency}
-                    band={band}
-                    index={index}
-                    onChange={handleBandChange}
-                  />
+                {presets.map((preset) => (
+                  <motion.button
+                    key={preset.name}
+                    onClick={() => handlePresetSelect(preset)}
+                    className={`flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl transition-all ${
+                      activePreset === preset.name
+                        ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white'
+                        : 'glass text-muted-foreground hover:text-foreground'
+                    }`}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {preset.icon}
+                    <span className="text-[10px] font-medium leading-tight">{preset.name}</span>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
-            {/* Bass Boost */}
+            {/* 8-Band EQ */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-orange-400" />
-                  <span className="text-sm">Bass Boost</span>
-                </div>
-                <span className="text-xs text-muted-foreground">{bassBoost}%</span>
-              </div>
-              <Slider
-                value={[bassBoost]}
-                min={0}
-                max={100}
-                step={5}
-                onValueChange={([value]) => {
-                  setBassBoost(value);
-                  setActivePreset('custom');
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">8-Band Equalizer</h3>
+              <div
+                className="flex justify-between px-2 py-4 rounded-2xl"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)',
+                  border: '1px solid rgba(255,255,255,0.05)',
                 }}
-                className="w-full"
-              />
+              >
+                {bands.map((band, index) => (
+                  <FrequencySlider key={band.frequency} band={band} index={index} onChange={handleBandChange} />
+                ))}
+              </div>
+            </div>
+
+            {/* Effects */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Effects</h3>
+              {/* Bass Boost */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-orange-400" />
+                    <span className="text-sm">Bass Boost</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">{bassBoost}%</span>
+                </div>
+                <Slider value={[bassBoost]} min={0} max={100} step={5} onValueChange={([v]) => { setBassBoost(v); setActivePreset(null); }} className="w-full" />
+              </div>
+              {/* Playback Speed */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Radio className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm">Playback Speed</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">{playbackSpeed}x</span>
+                </div>
+                <Slider value={[playbackSpeed]} min={0.5} max={2} step={0.05} onValueChange={([v]) => setPlaybackSpeed(v)} className="w-full" />
+                <div className="flex justify-between text-[10px] text-muted-foreground/50 px-1">
+                  <span>0.5x</span><span>1x</span><span>1.5x</span><span>2x</span>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
