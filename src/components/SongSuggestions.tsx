@@ -7,19 +7,17 @@ const SongSuggestions = memo(function SongSuggestions({ allSongs }: { allSongs: 
 
   const suggestions = useMemo(() => {
     if (!currentSong || allSongs.length === 0) return [];
-    // Filter out current song, prefer same genre/artist, then random
-    const sameGenre = allSongs.filter(
-      s => s.id !== currentSong.id && s.genre && s.genre === currentSong.genre
-    );
     const sameArtist = allSongs.filter(
       s => s.id !== currentSong.id && s.artist === currentSong.artist
     );
+    const sameAlbum = allSongs.filter(
+      s => s.id !== currentSong.id && s.album && s.album === currentSong.album
+    );
     const others = allSongs.filter(s => s.id !== currentSong.id);
 
-    // Combine: artist first, then genre, then others – deduplicate
     const seen = new Set<string>();
     const result: Song[] = [];
-    for (const list of [sameArtist, sameGenre, others]) {
+    for (const list of [sameArtist, sameAlbum, others]) {
       for (const s of list) {
         if (!seen.has(s.id) && result.length < 15) {
           seen.add(s.id);
