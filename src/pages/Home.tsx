@@ -296,6 +296,9 @@ const Home = () => {
                 </motion.div>
               )}
 
+              {/* Audius Trending */}
+              <AudiusTrending />
+
               {/* Featured Artists */}
               <FeaturedArtistsSection />
 
