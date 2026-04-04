@@ -53,12 +53,12 @@ const eqState: {
 
 const presets: Preset[] = [
   { id: 'flat', name: 'Flat', icon: Music2, bands: [0, 0, 0, 0, 0, 0, 0, 0], bassBoost: 0 },
-  { id: 'bass-boost', name: 'Bass Boost', icon: Zap, bands: [6, 5, 4, 2, 0, -1, -2, -2], bassBoost: 50 },
+  { id: 'bass-boost', name: 'Bass Boost', icon: Zap, bands: [4, 3, 2, 1, 0, -1, -1, -1], bassBoost: 40 },
   { id: 'treble-boost', name: 'Treble Boost', icon: Sparkles, bands: [-2, -1, 0, 0, 1, 3, 4, 5], bassBoost: 0 },
   { id: 'vocal', name: 'Vocal', icon: Volume2, bands: [-3, -1, 0, 3, 4, 3, 1, 0], bassBoost: 0 },
   { id: '3d-audio', name: '3D Audio', icon: Globe, bands: [1, 0, -1, 0, 0, 1, 2, 1], bassBoost: 20 },
-  { id: 'phonk', name: 'Phonk', icon: Headphones, bands: [7, 5, 3, 0, -1, 1, 3, 4], bassBoost: 60 },
-  { id: 'deep-bass', name: 'Deep Bass', icon: Waves, bands: [8, 7, 5, 2, 0, -2, -3, -3], bassBoost: 80 },
+  { id: 'phonk', name: 'Phonk', icon: Headphones, bands: [5, 4, 2, 0, -1, 1, 2, 3], bassBoost: 50 },
+  { id: 'deep-bass', name: 'Deep Bass', icon: Waves, bands: [6, 5, 3, 1, 0, -1, -2, -2], bassBoost: 60 },
   { id: 'concert', name: 'Concert', icon: Sparkles, bands: [3, 2, 0, 1, 2, 3, 3, 2], bassBoost: 10 },
 ];
 
@@ -247,15 +247,17 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   // Helper functions that directly manipulate the audio graph
   function applyBands(currentBands: EQBand[], currentBassBoost: number) {
     if (!eqState.filters.length) return;
-    const boost = currentBassBoost / 8; // Stronger bass boost multiplier
+    // Gentle bass boost: max +6dB at 100%, scaled subtly
+    const boost = (currentBassBoost / 100) * 6;
     currentBands.forEach((band, i) => {
       if (eqState.filters[i]) {
         let gain = band.gain;
-        // Add bass boost to low frequency bands
+        // Only add bass boost to the 3 lowest bands
         if (i === 0) gain += boost;
-        else if (i === 1) gain += boost * 0.75;
-        else if (i === 2) gain += boost * 0.4;
-        eqState.filters[i].gain.value = gain;
+        else if (i === 1) gain += boost * 0.6;
+        else if (i === 2) gain += boost * 0.3;
+        // Clamp to safe range
+        eqState.filters[i].gain.value = Math.max(-12, Math.min(12, gain));
       }
     });
   }
