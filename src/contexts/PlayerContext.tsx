@@ -618,7 +618,26 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
     }
-    
+
+    // ── YouTube IFrame fallback path ──
+    if (isYouTubeFallbackUrl(audioUrl)) {
+      const videoId = getYouTubeFallbackVideoId(audioUrl);
+      if (!videoId) {
+        setIsPlaying(false);
+        toast.error('This song could not be played.');
+        return;
+      }
+      await playYouTubeFallback(videoId, () => {
+        // Trigger normal "ended" pipeline
+        const evt = new Event('ended');
+        try { audioRef.current?.dispatchEvent(evt); } catch { /* ignore */ }
+      });
+      return;
+    }
+
+    // Standard HTMLAudio path — make sure YT is torn down
+    teardownYouTubePlayback();
+
     // Set source and play immediately
     configureAudioElementSource(audioRef.current, buildStreamProxyUrl(audioUrl));
     audioRef.current.volume = volume;
@@ -637,13 +656,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const nextIdx = (index + 1) % songQueue.length;
     if (nextIdx !== index && nextAudioRef.current) {
       const nextSong = songQueue[nextIdx];
-      if (nextSong && isPlayableUrl(nextSong.audio_url)) {
+      if (nextSong && isPlayableUrl(nextSong.audio_url) && !isYouTubeFallbackUrl(nextSong.audio_url)) {
         configureAudioElementSource(nextAudioRef.current, buildStreamProxyUrl(nextSong.audio_url));
         nextAudioRef.current.preload = 'auto';
         nextAudioRef.current.load();
       }
     }
-  }, [volume, isPlayableUrl, resolveAudioUrl]);
+  }, [volume, isPlayableUrl, resolveAudioUrl, playYouTubeFallback, teardownYouTubePlayback]);
 
   // Handle song end and crossfade
   useEffect(() => {
