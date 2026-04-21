@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Song } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
 import { iosSpring, iosBounce } from '@/lib/animations';
+import { persistStreamSong, getTrackSource } from '@/lib/streamSongs';
+import { isCatalogSongId } from '@/lib/songSupport';
 
 interface Playlist {
   id: string;
@@ -65,7 +67,10 @@ const AddToPlaylistModal = memo(function AddToPlaylistModal({
     setAddingTo(playlistId);
 
     try {
-      // Get current max position
+      if (!isCatalogSongId(song.id)) {
+        await persistStreamSong(song);
+      }
+
       const { data: existingSongs, error: fetchError } = await supabase
         .from('playlist_songs')
         .select('position')
@@ -83,6 +88,7 @@ const AddToPlaylistModal = memo(function AddToPlaylistModal({
           playlist_id: playlistId,
           song_id: song.id,
           position: nextPosition,
+          track_source: getTrackSource(song),
         });
 
       if (error) {

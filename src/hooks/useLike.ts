@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { isCatalogSongId } from '@/lib/songSupport';
+import { persistStreamSong, getTrackSource } from '@/lib/streamSongs';
+import type { Song } from '@/contexts/PlayerContext';
 
 // ============================================================
 // Batch Like Cache — single query loads ALL user likes
@@ -52,7 +54,7 @@ const loadLikeCache = async (userId: string): Promise<void> => {
   return likeCachePromise;
 };
 
-export const useLike = (songId: string) => {
+export const useLike = (songId: string, song?: Song | null) => {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +69,6 @@ export const useLike = (songId: string) => {
     if (!songId) { setIsLiked(false); return; }
 
     if (!user) {
-      // Check localStorage for stream likes even when not logged in
       const streamLikes = getStreamLikes();
       setIsLiked(streamLikes.has(songId));
       return;
@@ -94,32 +95,36 @@ export const useLike = (songId: string) => {
     setIsLoading(true);
     const newLiked = !isLiked;
 
-    // Optimistic update
     setIsLiked(newLiked);
     if (newLiked) { likeCache.add(songId); } else { likeCache.delete(songId); }
 
     const isCatalog = isCatalogSongId(songId);
 
     try {
-      if (isCatalog) {
-        // Database operation for catalog songs
-        if (!newLiked) {
-          const { error } = await supabase
-            .from('user_library')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('song_id', songId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('user_library')
-            .insert({ user_id: user.id, song_id: songId });
-          if (error) throw error;
+      if (newLiked) {
+        if (!isCatalog && song) {
+          await persistStreamSong(song);
         }
+        const { error } = await supabase
+          .from('user_library')
+          .insert({
+            user_id: user.id,
+            song_id: songId,
+            track_source: song ? getTrackSource(song) : (isCatalog ? 'library' : 'indexed'),
+          });
+        if (error && error.code !== '23505') throw error;
       } else {
-        // localStorage for stream/audius songs
+        const { error } = await supabase
+          .from('user_library')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('song_id', songId);
+        if (error) throw error;
+      }
+
+      if (!isCatalog) {
         const streamLikes = getStreamLikes();
-        if (newLiked) { streamLikes.add(songId); } else { streamLikes.delete(songId); }
+        if (newLiked) streamLikes.add(songId); else streamLikes.delete(songId);
         saveStreamLikes(streamLikes);
       }
 
@@ -132,7 +137,7 @@ export const useLike = (songId: string) => {
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
-  }, [user, songId, isLiked, isLoading]);
+  }, [user, songId, song, isLiked, isLoading]);
 
   return { isLiked, isLoading, toggleLike };
 };

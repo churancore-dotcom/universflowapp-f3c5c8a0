@@ -4,9 +4,11 @@ import { Heart } from 'lucide-react';
 import { useLike } from '@/hooks/useLike';
 import { iosBounce } from '@/lib/animations';
 import { triggerHaptic } from '@/hooks/useHaptics';
+import type { Song } from '@/contexts/PlayerContext';
 
 interface LikeButtonProps {
   songId: string;
+  song?: Song | null;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -23,8 +25,8 @@ const iconSizes = {
   lg: 'w-6 h-6',
 };
 
-const LikeButton = memo(({ songId, size = 'md', className = '' }: LikeButtonProps) => {
-  const { isLiked, isLoading, toggleLike } = useLike(songId);
+const LikeButton = memo(({ songId, song, size = 'md', className = '' }: LikeButtonProps) => {
+  const { isLiked, isLoading, toggleLike } = useLike(songId, song);
 
   return (
     <motion.button
