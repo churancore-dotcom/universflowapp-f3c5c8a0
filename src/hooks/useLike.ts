@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { isCatalogSongId } from '@/lib/songSupport';
+import { persistStreamSong, getTrackSource } from '@/lib/streamSongs';
+import type { Song } from '@/contexts/PlayerContext';
 
 // ============================================================
 // Batch Like Cache — single query loads ALL user likes
