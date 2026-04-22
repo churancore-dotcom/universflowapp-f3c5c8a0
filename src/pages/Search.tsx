@@ -38,26 +38,34 @@ const moods = [
   { name: 'Energetic', color: 'from-orange-400 to-red-500', icon: '⚡' },
   { name: 'Romantic', color: 'from-pink-400 to-rose-500', icon: '💕' },
   { name: 'Focus', color: 'from-violet-500 to-purple-600', icon: '🎯' },
+  { name: 'Sad', color: 'from-slate-500 to-slate-700', icon: '😢' },
+  { name: 'Happy', color: 'from-yellow-400 to-amber-500', icon: '😊' },
+  { name: 'Party', color: 'from-fuchsia-500 to-pink-500', icon: '🎉' },
 ];
 
 type SearchSource = 'all' | 'library' | 'indexer';
 
-// ── Search history ──
-const SEARCH_HISTORY_KEY = 'uf_search_history';
-const MAX_HISTORY = 15;
+type SearchSource = 'all' | 'library' | 'indexer';
 
-function getSearchHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); } catch { return []; }
-}
-function addToSearchHistory(term: string) {
-  const t = term.trim();
-  if (t.length < 2) return;
-  const history = getSearchHistory().filter(h => h.toLowerCase() !== t.toLowerCase());
-  history.unshift(t);
-  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
-}
-function clearSearchHistory() {
-  localStorage.removeItem(SEARCH_HISTORY_KEY);
+// Helper: dedupe + interleave indexed tracks across multiple queries
+async function searchMultiQuery(queries: string[], perQuery = 15): Promise<IndexedTrack[]> {
+  const results = await Promise.all(
+    queries.map(q => searchIndexedTracks(q, perQuery).catch(() => [] as IndexedTrack[]))
+  );
+  const seen = new Set<string>();
+  const out: IndexedTrack[] = [];
+  // Round-robin interleave so first results from each query appear early
+  const max = Math.max(...results.map(r => r.length), 0);
+  for (let i = 0; i < max; i++) {
+    for (const list of results) {
+      const t = list[i];
+      if (t && !seen.has(t.id)) {
+        seen.add(t.id);
+        out.push(t);
+      }
+    }
+  }
+  return out;
 }
 
 const mapSongRow = (s: any): Song => ({
