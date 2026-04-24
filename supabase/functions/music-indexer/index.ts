@@ -6,6 +6,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── Persistent DB-backed stream cache (survives cold starts) ──
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const STREAM_DB_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+let _adminClient: ReturnType<typeof createClient> | null = null;
+function getAdminClient() {
+  if (!_adminClient && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+    _adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return _adminClient;
+}
+
+function dbCacheKey(artist: string, title: string) {
+  return `resolve:${artist.toLowerCase().trim()}::${title.toLowerCase().trim()}`.slice(0, 200);
+}
+
+async function getDbCachedStream(artist: string, title: string): Promise<{ streamUrl: string; videoId?: string; cover_url?: string; duration?: number } | null> {
+  const client = getAdminClient();
+  if (!client) return null;
+  try {
+    const trackId = dbCacheKey(artist, title);
+    const { data } = await client
+      .from('stream_songs')
+      .select('audio_url, cover_url, duration, metadata, last_seen_at')
+      .eq('track_id', trackId)
+      .maybeSingle();
+    if (!data?.audio_url) return null;
+    const ageMs = Date.now() - new Date(data.last_seen_at as string).getTime();
+    if (ageMs > STREAM_DB_CACHE_TTL_MS) return null;
+    const meta = (data.metadata as Record<string, unknown>) || {};
+    return {
+      streamUrl: data.audio_url as string,
+      videoId: typeof meta.videoId === 'string' ? meta.videoId : undefined,
+      cover_url: (data.cover_url as string) || undefined,
+      duration: (data.duration as number) || undefined,
+    };
+  } catch (err) {
+    console.warn('[db-cache] read failed:', err);
+    return null;
+  }
+}
+
+async function writeDbCachedStream(artist: string, title: string, payload: { streamUrl: string; videoId?: string; cover_url?: string; duration?: number }) {
+  const client = getAdminClient();
+  if (!client) return;
+  try {
+    const trackId = dbCacheKey(artist, title);
+    await client.from('stream_songs').upsert({
+      track_id: trackId,
+      title,
+      artist,
+      audio_url: payload.streamUrl,
+      cover_url: payload.cover_url || null,
+      duration: payload.duration || null,
+      source: 'resolved',
+      metadata: { videoId: payload.videoId || null, cached_at: new Date().toISOString() },
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'track_id' });
+  } catch (err) {
+    console.warn('[db-cache] write failed:', err);
+  }
+}
+
 const AUDIO_PROXY_ALLOWED_HOST_SNIPPETS = [
   'private.coffee',
   'googlevideo.com',
