@@ -301,8 +301,7 @@ const MiniPlayer = memo(function MiniPlayer() {
             </div>
           </div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 });
 
