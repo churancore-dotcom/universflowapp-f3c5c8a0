@@ -932,15 +932,28 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
 
-    // Track recently played (fire and forget - no await)
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        supabase.from('recently_played').insert({
-          user_id: user.id,
-          song_id: song.id,
-        }).then(() => {});
-      }
-    }).catch(() => {});
+    // Track recently played — DEBOUNCED: only log if user actually listens
+    // for 30s. Cancels previous pending log if user skips quickly.
+    // Also: only catalog UUIDs are valid for recently_played.song_id (uuid column).
+    if (recentlyPlayedTimerRef.current) {
+      clearTimeout(recentlyPlayedTimerRef.current);
+      recentlyPlayedTimerRef.current = null;
+    }
+    const isCatalogUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(song.id);
+    if (isCatalogUuid) {
+      const songIdToLog = song.id;
+      recentlyPlayedTimerRef.current = window.setTimeout(() => {
+        recentlyPlayedTimerRef.current = null;
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            supabase.from('recently_played').insert({
+              user_id: user.id,
+              song_id: songIdToLog,
+            }).then(() => {});
+          }
+        }).catch(() => {});
+      }, 30000);
+    }
   }, [isPlayableUrl, queue, resolveAudioUrl, volume, playYouTubeFallback, teardownYouTubePlayback]);
 
   // Check premium status from database
