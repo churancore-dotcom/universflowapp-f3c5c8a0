@@ -6,6 +6,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── Persistent DB-backed stream cache (survives cold starts) ──
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const STREAM_DB_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// deno-lint-ignore no-explicit-any
+let _adminClient: any = null;
+function getAdminClient() {
+  if (!_adminClient && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+    _adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return _adminClient;
+}
+
+function dbCacheKey(artist: string, title: string) {
+  return `resolve:${artist.toLowerCase().trim()}::${title.toLowerCase().trim()}`.slice(0, 200);
+}
+
+async function getDbCachedStream(artist: string, title: string): Promise<{ streamUrl: string; videoId?: string; cover_url?: string; duration?: number } | null> {
+  const client = getAdminClient();
+  if (!client) return null;
+  try {
+    const trackId = dbCacheKey(artist, title);
+    const { data } = await client
+      .from('stream_songs')
+      .select('audio_url, cover_url, duration, metadata, last_seen_at')
+      .eq('track_id', trackId)
+      .maybeSingle();
+    if (!data?.audio_url) return null;
+    const ageMs = Date.now() - new Date(data.last_seen_at as string).getTime();
+    if (ageMs > STREAM_DB_CACHE_TTL_MS) return null;
+    const meta = (data.metadata as Record<string, unknown>) || {};
+    return {
+      streamUrl: data.audio_url as string,
+      videoId: typeof meta.videoId === 'string' ? meta.videoId : undefined,
+      cover_url: (data.cover_url as string) || undefined,
+      duration: (data.duration as number) || undefined,
+    };
+  } catch (err) {
+    console.warn('[db-cache] read failed:', err);
+    return null;
+  }
+}
+
+async function writeDbCachedStream(artist: string, title: string, payload: { streamUrl: string; videoId?: string; cover_url?: string; duration?: number }) {
+  const client = getAdminClient();
+  if (!client) return;
+  try {
+    const trackId = dbCacheKey(artist, title);
+    await client.from('stream_songs').upsert({
+      track_id: trackId,
+      title,
+      artist,
+      audio_url: payload.streamUrl,
+      cover_url: payload.cover_url || null,
+      duration: payload.duration || null,
+      source: 'resolved',
+      metadata: { videoId: payload.videoId || null, cached_at: new Date().toISOString() },
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'track_id' });
+  } catch (err) {
+    console.warn('[db-cache] write failed:', err);
+  }
+}
+
 const AUDIO_PROXY_ALLOWED_HOST_SNIPPETS = [
   'private.coffee',
   'googlevideo.com',
@@ -185,7 +253,7 @@ async function getItunesArtwork(artist: string, title: string): Promise<string |
     const results = Array.isArray(data?.results) ? data.results : [];
     const best = results
       .map((item: Record<string, unknown>) => ({ item, score: scoreMetadataCandidate(item, artist, title) }))
-      .sort((a, b) => b.score - a.score)[0]?.item;
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score)[0]?.item;
 
     const artwork = sanitizeArtwork(upscaleItunesArtwork(String(best?.artworkUrl100 || '')));
     setCached(cacheKey, artwork || null, 12 * 60 * 60 * 1000);
@@ -220,7 +288,7 @@ async function getDeezerArtwork(artist: string, title: string): Promise<string |
           title,
         ),
       }))
-      .sort((a, b) => b.score - a.score)[0]?.item;
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score)[0]?.item;
 
     const artwork = sanitizeArtwork(String(best?.album?.cover_xl || best?.album?.cover_big || best?.album?.cover_medium || ''));
     setCached(cacheKey, artwork || null, 12 * 60 * 60 * 1000);
@@ -802,6 +870,21 @@ async function resolveStream(artist: string, title: string): Promise<ResolveResu
   const cached = getCached<ResolveResult>(ck);
   if (cached) return cached;
 
+  // ── Persistent DB cache (survives cold starts; shared across users) ──
+  const dbCached = await getDbCachedStream(artist, title);
+  if (dbCached?.streamUrl) {
+    const result: ResolveResult = {
+      success: true,
+      streamUrl: dbCached.streamUrl,
+      videoId: dbCached.videoId,
+      duration: dbCached.duration,
+      title, artist,
+      cover_url: dbCached.cover_url,
+    };
+    setCached(ck, result, 30 * 60 * 1000);
+    return result;
+  }
+
   await refreshInstances();
 
   console.log(`[resolve] searching for: ${artist} - ${title}`);
@@ -828,6 +911,13 @@ async function resolveStream(artist: string, title: string): Promise<ResolveResu
           cover_url: await resolveArtwork(artist, title),
       };
       setCached(ck, result, 45 * 60 * 1000); // cache resolved streams for 45 min
+      // Persist to DB so other users / cold-started workers get instant resolution
+      void writeDbCachedStream(artist, title, {
+        streamUrl: result.streamUrl!,
+        videoId: result.videoId,
+        duration: result.duration,
+        cover_url: result.cover_url,
+      });
       return result;
     }
   }
@@ -843,6 +933,11 @@ async function resolveStream(artist: string, title: string): Promise<ResolveResu
       fallback: true,
     };
     setCached(ck, fallback, 30 * 60 * 1000);
+    void writeDbCachedStream(artist, title, {
+      streamUrl: fallback.streamUrl!,
+      videoId: fallback.videoId,
+      cover_url: fallback.cover_url,
+    });
     return fallback;
   }
 

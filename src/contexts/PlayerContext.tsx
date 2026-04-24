@@ -235,12 +235,42 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const crossfadeIntervalRef = useRef<number | null>(null);
   const isCrossfading = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
+  const recentlyPlayedTimerRef = useRef<number | null>(null);
+  const queueRestoredRef = useRef(false);
 
   // YouTube IFrame fallback
   const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
   const youtubeProgressRef = useRef<number | null>(null);
   const youtubeActiveRef = useRef(false);
   const youtubeEndCallbackRef = useRef<(() => void) | null>(null);
+
+  // ── Persist queue across reloads ──
+  useEffect(() => {
+    if (queueRestoredRef.current) return;
+    queueRestoredRef.current = true;
+    try {
+      const raw = localStorage.getItem('player_queue_state');
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { queue: Song[]; index: number; song: Song | null };
+      if (Array.isArray(saved.queue) && saved.queue.length > 0) {
+        setQueueState(saved.queue);
+        setCurrentIndex(Math.max(0, Math.min(saved.index || 0, saved.queue.length - 1)));
+        if (saved.song) setCurrentSong(saved.song);
+      }
+    } catch { /* ignore corrupt cache */ }
+  }, []);
+
+  useEffect(() => {
+    if (!queueRestoredRef.current) return;
+    try {
+      const trimmed = queue.slice(0, 100);
+      localStorage.setItem('player_queue_state', JSON.stringify({
+        queue: trimmed,
+        index: Math.min(currentIndex, trimmed.length - 1),
+        song: currentSong,
+      }));
+    } catch { /* quota or disabled */ }
+  }, [queue, currentIndex, currentSong]);
 
   // Check premium status on mount
   useEffect(() => {
@@ -728,11 +758,44 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     };
 
+    // ── Auto-skip on stream errors (broken/expired URLs) ──
+    let lastErrorAt = 0;
+    const handleAudioError = () => {
+      // Debounce: avoid skip-storms if a few errors fire in a row
+      const now = Date.now();
+      if (now - lastErrorAt < 1500) return;
+      lastErrorAt = now;
+
+      const errorCode = audio.error?.code;
+      // Ignore aborts triggered by intentional source swaps / pauses
+      if (errorCode === MediaError.MEDIA_ERR_ABORTED) return;
+
+      console.warn('[player] audio error, auto-skipping:', errorCode, audio.error?.message);
+
+      if (queue.length === 0) {
+        setIsPlaying(false);
+        return;
+      }
+
+      let nextIdx = getNextIndex(currentIndex, queue.length, shuffle, repeat);
+      if (nextIdx === null && repeat === 'all') nextIdx = 0;
+      if (nextIdx === null && queue.length > 1) nextIdx = (currentIndex + 1) % queue.length;
+
+      if (nextIdx !== null && nextIdx !== currentIndex) {
+        toast.info('Stream unavailable — playing next song');
+        playSongAtIndex(nextIdx, queue);
+      } else {
+        setIsPlaying(false);
+        toast.error('This song could not start right now.');
+      }
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('error', handleAudioError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -740,6 +803,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('error', handleAudioError);
     };
   }, [currentIndex, queue, shuffle, repeat, crossfade, crossfadeDuration, getNextIndex, playSongAtIndex, isPremiumUser, songsPlayedSinceAd]);
 
@@ -898,15 +962,28 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
 
-    // Track recently played (fire and forget - no await)
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        supabase.from('recently_played').insert({
-          user_id: user.id,
-          song_id: song.id,
-        }).then(() => {});
-      }
-    }).catch(() => {});
+    // Track recently played — DEBOUNCED: only log if user actually listens
+    // for 30s. Cancels previous pending log if user skips quickly.
+    // Also: only catalog UUIDs are valid for recently_played.song_id (uuid column).
+    if (recentlyPlayedTimerRef.current) {
+      clearTimeout(recentlyPlayedTimerRef.current);
+      recentlyPlayedTimerRef.current = null;
+    }
+    const isCatalogUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(song.id);
+    if (isCatalogUuid) {
+      const songIdToLog = song.id;
+      recentlyPlayedTimerRef.current = window.setTimeout(() => {
+        recentlyPlayedTimerRef.current = null;
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            supabase.from('recently_played').insert({
+              user_id: user.id,
+              song_id: songIdToLog,
+            }).then(() => {});
+          }
+        }).catch(() => {});
+      }, 30000);
+    }
   }, [isPlayableUrl, queue, resolveAudioUrl, volume, playYouTubeFallback, teardownYouTubePlayback]);
 
   // Check premium status from database
