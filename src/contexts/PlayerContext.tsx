@@ -728,11 +728,44 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     };
 
+    // ── Auto-skip on stream errors (broken/expired URLs) ──
+    let lastErrorAt = 0;
+    const handleAudioError = () => {
+      // Debounce: avoid skip-storms if a few errors fire in a row
+      const now = Date.now();
+      if (now - lastErrorAt < 1500) return;
+      lastErrorAt = now;
+
+      const errorCode = audio.error?.code;
+      // Ignore aborts triggered by intentional source swaps / pauses
+      if (errorCode === MediaError.MEDIA_ERR_ABORTED) return;
+
+      console.warn('[player] audio error, auto-skipping:', errorCode, audio.error?.message);
+
+      if (queue.length === 0) {
+        setIsPlaying(false);
+        return;
+      }
+
+      let nextIdx = getNextIndex(currentIndex, queue.length, shuffle, repeat);
+      if (nextIdx === null && repeat === 'all') nextIdx = 0;
+      if (nextIdx === null && queue.length > 1) nextIdx = (currentIndex + 1) % queue.length;
+
+      if (nextIdx !== null && nextIdx !== currentIndex) {
+        toast.info('Stream unavailable — playing next song');
+        playSongAtIndex(nextIdx, queue);
+      } else {
+        setIsPlaying(false);
+        toast.error('This song could not start right now.');
+      }
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('error', handleAudioError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -740,6 +773,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('error', handleAudioError);
     };
   }, [currentIndex, queue, shuffle, repeat, crossfade, crossfadeDuration, getNextIndex, playSongAtIndex, isPremiumUser, songsPlayedSinceAd]);
 
