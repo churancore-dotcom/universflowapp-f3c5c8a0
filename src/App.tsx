@@ -273,6 +273,7 @@ const AppContent = () => {
         )}
       </AnimatePresence>
       <PrerollAdWrapper />
+      <GlobalPlayerLayer />
       <MateHeartButton />
       <PostAuthGate />
       <Suspense fallback={null}>
