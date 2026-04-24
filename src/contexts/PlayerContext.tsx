@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { useMediaSession } from '@/hooks/useMediaSession';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveIndexedTrack } from '@/lib/musicIndexer';
+import { resolveIndexedTrack, prefetchIndexedTrack } from '@/lib/musicIndexer';
 import { toast } from 'sonner';
 
 interface YouTubePlayer {
