@@ -77,6 +77,7 @@ const SecurityCenter = lazy(() => import("./pages/admin/SecurityCenter"));
 const AIAssistant = lazy(() => import("./pages/admin/AIAssistant"));
 
 const AdminSongRequests = lazy(() => import("./pages/admin/SongRequests"));
+const SupportInbox = lazy(() => import("./pages/admin/SupportInbox"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -168,6 +169,7 @@ const AnimatedRoutes = () => {
             <Route path="ab-testing" element={<ABTesting />} />
             <Route path="security" element={<SecurityCenter />} />
             <Route path="ai-assistant" element={<AIAssistant />} />
+            <Route path="support" element={<SupportInbox />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
