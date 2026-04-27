@@ -92,7 +92,7 @@
   
   /* Force mobile viewport - disable zoom and desktop behaviors */
   html {
-    background: #000;
+    background: hsl(var(--background));
     overflow: hidden;
     height: 100%;
     width: 100%;
@@ -107,7 +107,8 @@
     overflow: hidden;
     position: fixed;
     inset: 0;
-    @apply bg-black text-foreground antialiased;
+    background: hsl(var(--background));
+    @apply text-foreground antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
