@@ -57,7 +57,7 @@ const Wrapped = () => {
     try {
       const { data: rows, error } = await supabase
         .from('recently_played')
-        .select('played_at, songs:song_id(id, title, artist, cover_url, duration, genre)')
+        .select('played_at, song_id')
         .eq('user_id', user!.id)
         .gte('played_at', YEAR_START)
         .lt('played_at', YEAR_END)
@@ -65,7 +65,26 @@ const Wrapped = () => {
         .limit(5000);
 
       if (error) throw error;
-      const plays = (rows as unknown as PlayRow[]) || [];
+      const history = (rows as { played_at: string; song_id: string }[]) || [];
+
+      if (history.length === 0) {
+        setData(aggregate([]));
+        return;
+      }
+
+      const uniqueIds = Array.from(new Set(history.map((h) => h.song_id)));
+      const { data: songs, error: songsErr } = await supabase
+        .from('songs')
+        .select('id, title, artist, cover_url, duration, genre')
+        .in('id', uniqueIds);
+
+      if (songsErr) throw songsErr;
+      const songMap = new Map((songs || []).map((s) => [s.id, s]));
+
+      const plays: PlayRow[] = history.map((h) => ({
+        played_at: h.played_at,
+        songs: songMap.get(h.song_id) || null,
+      }));
       setData(aggregate(plays));
     } catch (e) {
       console.error(e);
