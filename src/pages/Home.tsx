@@ -51,35 +51,78 @@ const LoadingSkeleton = memo(() => (
 
 LoadingSkeleton.displayName = 'LoadingSkeleton';
 
+const HOME_SONGS_QUERY_KEY = ['home', 'songs'] as const;
+
+const fetchHomeSongs = async (): Promise<Song[]> => {
+  const { data, error } = await supabase
+    .from('songs')
+    .select('*, artists(id, name, photo_url)')
+    .eq('is_visible', true)
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (error) throw error;
+  if (!data) return [];
+
+  return data.map((s: any) => {
+    const artistData = s.artists as { id: string; name: string; photo_url: string | null } | null;
+    return {
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album || undefined,
+      cover_url: s.cover_url || undefined,
+      audio_url: s.audio_url,
+      duration: s.duration || undefined,
+      artist_id: artistData?.id || s.artist_id || undefined,
+      artist_photo_url: artistData?.photo_url || undefined,
+      show_in_new_releases: s.show_in_new_releases,
+      show_in_trending: s.show_in_trending,
+      is_premium_only: s.is_premium_only,
+    } as Song;
+  });
+};
+
 const Home = () => {
   const { currentSong } = usePlayer();
   const { cachedSongs, updateCache } = useSongCache();
-  const [songs, setSongs] = useState<Song[]>(cachedSongs || []);
-  const [loading, setLoading] = useState(!cachedSongs);
+  const queryClient = useQueryClient();
   const [showLockScreen, setShowLockScreen] = useState(false);
   const [showSleepTimer, setShowSleepTimer] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
 
-  const newReleases = useMemo(() => 
-    songs.filter(s => (s as any).show_in_new_releases).slice(0, 10),
-    [songs]
-  );
+  const { data: songs = (cachedSongs || []), isLoading } = useQuery({
+    queryKey: HOME_SONGS_QUERY_KEY,
+    queryFn: fetchHomeSongs,
+    initialData: cachedSongs && cachedSongs.length > 0 ? cachedSongs : undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
+  // Persist to local song cache for instant boot next time
+  useEffect(() => {
+    if (songs && songs.length > 0) updateCache(songs);
+  }, [songs, updateCache]);
+
+  const loading = isLoading && songs.length === 0;
+
+  const newReleases = useMemo(
+    () => songs.filter((s: any) => s.show_in_new_releases).slice(0, 10),
+    [songs],
+  );
   const allSongs = useMemo(() => songs, [songs]);
 
-  // Debounced real-time refetch to prevent query storms with 2000+ users
+  // Realtime: invalidate cache (debounced) instead of imperatively refetching
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
-    fetchSongs();
-
     const channel = supabase
       .channel('songs-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, () => {
-        // Debounce: wait 2s after last change before refetching
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(fetchSongs, 2000);
+        debounceRef.current = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: HOME_SONGS_QUERY_KEY });
+        }, 2000);
       })
       .subscribe();
 
@@ -87,45 +130,8 @@ const Home = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
 
-  const fetchSongs = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('songs')
-        .select('*, artists(id, name, photo_url)')
-        .eq('is_visible', true)
-        .order('created_at', { ascending: false })
-        .limit(1000);
-
-      if (error) throw error;
-
-      if (data) {
-        const mappedSongs = data.map(s => {
-          const artistData = s.artists as { id: string; name: string; photo_url: string | null } | null;
-          return {
-            id: s.id,
-            title: s.title,
-            artist: s.artist,
-            album: s.album || undefined,
-            cover_url: s.cover_url || undefined,
-            audio_url: s.audio_url,
-            duration: s.duration || undefined,
-            artist_id: artistData?.id || s.artist_id || undefined,
-            artist_photo_url: artistData?.photo_url || undefined,
-            show_in_new_releases: (s as any).show_in_new_releases,
-            show_in_trending: (s as any).show_in_trending,
-            is_premium_only: (s as any).is_premium_only,
-          };
-        });
-        setSongs(mappedSongs);
-        updateCache(mappedSongs);
-      }
-    } catch (err) {
-      console.error('Failed to fetch songs:', err);
-    }
-    setLoading(false);
-  }, [updateCache]);
 
 
 
