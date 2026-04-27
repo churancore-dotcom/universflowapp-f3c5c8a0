@@ -52,23 +52,54 @@ const fetchLibraryData = async (userId: string) => {
   };
 };
 
+const LIBRARY_CACHE_KEY = 'library_cache_v1';
+
+const readLibraryCache = (userId: string) => {
+  try {
+    const raw = localStorage.getItem(`${LIBRARY_CACHE_KEY}:${userId}`);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    return parsed?.data;
+  } catch {
+    return undefined;
+  }
+};
+
+const writeLibraryCache = (userId: string, data: any) => {
+  try {
+    localStorage.setItem(`${LIBRARY_CACHE_KEY}:${userId}`, JSON.stringify({ data, ts: Date.now() }));
+  } catch { /* ignore quota */ }
+};
+
 const Library = () => {
-  const { user } = useAuth();
+  const { user, isOffline } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { playSong, currentSong } = usePlayer();
   const { downloads, removeSong, getDownloadedUrl, totalStorageUsed, clearAllDownloads } = useDownloads();
-  const [activeTab, setActiveTab] = useState('liked');
+  const [activeTab, setActiveTab] = useState(isOffline ? 'downloads' : 'liked');
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
 
   const libraryQueryKey = ['library', user?.id] as const;
+  const initialCached = user ? readLibraryCache(user.id) : undefined;
   const { data, isLoading } = useQuery({
     queryKey: libraryQueryKey,
     queryFn: () => fetchLibraryData(user!.id),
-    enabled: !!user,
+    enabled: !!user && !isOffline,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    initialData: initialCached,
   });
+
+  // Persist library result for instant offline boot
+  useEffect(() => {
+    if (user && data) writeLibraryCache(user.id, data);
+  }, [user, data]);
+
+  // If user goes offline, snap to downloads tab
+  useEffect(() => {
+    if (isOffline) setActiveTab('downloads');
+  }, [isOffline]);
 
   const likedSongs = data?.likedSongs || [];
   const playlists = data?.playlists || [];
