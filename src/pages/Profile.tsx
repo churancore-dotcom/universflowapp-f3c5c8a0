@@ -74,32 +74,42 @@ const Profile = () => {
 
   const handleSaveUsername = async () => {
     if (!user || !newUsername.trim()) return;
-    
+
     if (newUsername.trim().length < 3) {
       toast.error('Username must be at least 3 characters');
       return;
     }
-    
+
     if (newUsername.trim().length > 20) {
       toast.error('Username must be less than 20 characters');
       return;
     }
-    
+
+    if (profileData.username_changed) {
+      toast.error('You can only change your username once');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Set your username to "${newUsername.trim()}"?\n\nThis can only be done once and cannot be changed later.`
+    );
+    if (!confirmed) return;
+
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           username: newUsername.trim(),
           username_changed: true,
         })
         .eq('user_id', user.id);
-      
+
       if (error) throw error;
-      
+
       setProfileData(prev => ({ ...prev, username: newUsername.trim(), username_changed: true }));
       setIsEditingUsername(false);
-      toast.success('Username updated!');
+      toast.success('Username set! This cannot be changed again.');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update username');
     } finally {
