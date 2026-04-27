@@ -14,6 +14,7 @@ interface SessionSongPayload {
   cover_url?: string;
   audio_url: string;
   duration?: number;
+  source?: string;
 }
 
 interface PlaybackStatePayload {
@@ -108,6 +109,7 @@ const parseSessionSong = (value: unknown): SessionSongPayload | null => {
     audio_url: record.audio_url,
     cover_url: typeof record.cover_url === 'string' ? record.cover_url : undefined,
     duration: typeof record.duration === 'number' ? record.duration : undefined,
+    source: typeof record.source === 'string' ? record.source : undefined,
   };
 };
 
@@ -220,6 +222,7 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
       cover_url: song.cover_url,
       audio_url: song.audio_url,
       duration: song.duration,
+      source: (song as any).source,
     };
   }, []);
 
@@ -237,30 +240,80 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
     async (payload: PlaybackStatePayload | null | undefined) => {
       if (!payload?.song?.audio_url) return;
 
+      // For non-library sources (YouTube/Audius/indexed streams), the host's
+      // resolved URL may be short-lived or instance-specific. Mark it as
+      // 'resolving' so the guest's player re-resolves a fresh stream URL via
+      // the music indexer (resolveAudioUrl in PlayerContext).
+      const hostSource = payload.song.source;
+      const isStreamSource =
+        !!hostSource && hostSource !== 'library' && hostSource !== 'upload';
+
       const remoteSong: Song = {
         id: payload.song.id,
         title: payload.song.title,
         artist: payload.song.artist,
         cover_url: payload.song.cover_url,
-        audio_url: payload.song.audio_url,
+        audio_url: isStreamSource ? 'resolving' : payload.song.audio_url,
         duration: payload.song.duration,
-        source: 'indexed',
+        source: (hostSource as any) || 'indexed',
       };
 
-      const sameSong = currentSong?.id === remoteSong.id && currentSong?.audio_url === remoteSong.audio_url;
+      const sameSong =
+        currentSong?.id === remoteSong.id &&
+        // Treat as same song even if local URL is the resolved one
+        (currentSong?.audio_url === remoteSong.audio_url ||
+          (isStreamSource && !!currentSong?.audio_url));
       const remotePosition = Number(payload.playbackPosition) || 0;
       const localPosition = audioElement?.currentTime ?? progress;
 
       applyingRemoteStateRef.current = true;
 
+      const clearFlag = () => {
+        window.setTimeout(() => {
+          applyingRemoteStateRef.current = false;
+        }, 250);
+      };
+
       try {
         if (!sameSong) {
           playSong(remoteSong, undefined, [remoteSong]);
-          window.setTimeout(() => {
-            if (remotePosition > 0) seek(remotePosition);
-            if (payload.isPlaying) play();
-            else pause();
-          }, 180);
+
+          // Wait for the audio element to be ready before seeking/playing,
+          // instead of a fixed 180ms timeout that races resolution.
+          const audio = audioElement;
+          const applyOnReady = () => {
+            try {
+              if (remotePosition > 0) seek(remotePosition);
+              if (payload.isPlaying) play();
+              else pause();
+            } finally {
+              clearFlag();
+            }
+          };
+
+          if (audio) {
+            // If already loaded enough, apply immediately
+            if (audio.readyState >= 2) {
+              applyOnReady();
+            } else {
+              const onReady = () => {
+                audio.removeEventListener('canplay', onReady);
+                audio.removeEventListener('loadedmetadata', onReady);
+                applyOnReady();
+              };
+              audio.addEventListener('canplay', onReady, { once: true });
+              audio.addEventListener('loadedmetadata', onReady, { once: true });
+              // Safety timeout in case events never fire (resolve failure)
+              window.setTimeout(() => {
+                audio.removeEventListener('canplay', onReady);
+                audio.removeEventListener('loadedmetadata', onReady);
+                clearFlag();
+              }, 8000);
+            }
+          } else {
+            // No audio element yet — fall back to a short delay
+            window.setTimeout(applyOnReady, 200);
+          }
           return;
         }
 
@@ -270,10 +323,9 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
 
         if (payload.isPlaying) play();
         else pause();
-      } finally {
-        window.setTimeout(() => {
-          applyingRemoteStateRef.current = false;
-        }, 250);
+        clearFlag();
+      } catch {
+        clearFlag();
       }
     },
     [audioElement, currentSong?.audio_url, currentSong?.id, pause, play, playSong, progress, seek],
