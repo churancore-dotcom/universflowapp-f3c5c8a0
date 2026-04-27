@@ -40,7 +40,8 @@ const Settings = () => {
             const estimate = await navigator.storage?.estimate();
             if (estimate?.usage) total = estimate.usage;
           }
-          if (total > 1024 * 1024) setCacheSize(`${(total / (1024 * 1024)).toFixed(1)} MB`);
+          if (total > 1024 * 1024 * 1024) setCacheSize(`${(total / (1024 * 1024 * 1024)).toFixed(2)} GB`);
+          else if (total > 1024 * 1024) setCacheSize(`${(total / (1024 * 1024)).toFixed(1)} MB`);
           else if (total > 1024) setCacheSize(`${(total / 1024).toFixed(0)} KB`);
           else setCacheSize('0 MB');
         }
