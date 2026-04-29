@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.universflow',
+  appId: 'app.lovable.id5acaae55bbc847a7bd32f3924d8ef986',
   appName: 'UniversFlow',
   webDir: 'dist',
   plugins: {
