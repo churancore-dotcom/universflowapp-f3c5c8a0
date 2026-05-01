@@ -324,6 +324,7 @@ public class MediaNotificationService extends Service {
 
     @Override
     public void onDestroy() {
+        releaseWakeLock();
         stopForegroundCompat();
         super.onDestroy();
     }
