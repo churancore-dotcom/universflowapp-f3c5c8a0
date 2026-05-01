@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Send, Users, Clock, Target, BarChart3, Plus, Trash2, RefreshCw, Smartphone, Link as LinkIcon } from 'lucide-react';
+import { Bell, Send, Users, Clock, Target, BarChart3, Plus, Trash2, RefreshCw, Smartphone, Link as LinkIcon, Search, X, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type Audience = 'all' | 'premium' | 'free';
+type Audience = 'all' | 'premium' | 'free' | 'specific';
 type NotifType = 'info' | 'success' | 'warning';
 type Channel = 'in_app' | 'push' | 'both';
 
@@ -40,7 +40,15 @@ const audienceLabels: Record<Audience, string> = {
   all: 'All Users',
   premium: 'Premium Only',
   free: 'Free Users',
+  specific: 'Specific User',
 };
+
+interface UserHit {
+  user_id: string;
+  email: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
 
 interface KPI { delivered: number; opened: number; clicked: number; }
 
@@ -74,6 +82,32 @@ const PushNotifications = () => {
     channel: 'both' as Channel,
     deep_link: '/home',
   });
+
+  // Specific-user picker state
+  const [userQuery, setUserQuery] = useState('');
+  const [userHits, setUserHits] = useState<UserHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserHit | null>(null);
+
+  useEffect(() => {
+    if (draft.target_audience !== 'specific') return;
+    const q = userQuery.trim();
+    if (q.length < 2) { setUserHits([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, email, username, avatar_url')
+        .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
+        .limit(10);
+      if (!cancelled) {
+        setUserHits((data ?? []) as UserHit[]);
+        setSearching(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [userQuery, draft.target_audience]);
 
   const fetchKPIs = useCallback(async () => {
     const { data } = await supabase.from('announcement_events').select('announcement_id, event_type');
@@ -129,13 +163,21 @@ const PushNotifications = () => {
       toast.error('Title and message are required');
       return;
     }
+    if (draft.target_audience === 'specific' && !selectedUser) {
+      toast.error('Pick a user to send to');
+      return;
+    }
+    // Specific user can only receive push (in-app banners are audience-wide)
+    const effectiveChannel: Channel =
+      draft.target_audience === 'specific' ? 'push' : draft.channel;
+
     setSaving(true);
 
     let inAppOk = true;
     let pushOk = true;
 
     // 1) In-app banner
-    if (draft.channel === 'in_app' || draft.channel === 'both') {
+    if (effectiveChannel === 'in_app' || effectiveChannel === 'both') {
       const { error } = await supabase.from('announcements').insert({
         title: draft.title.trim(),
         message: draft.message.trim(),
@@ -150,35 +192,49 @@ const PushNotifications = () => {
     }
 
     // 2) Real push via FCM
-    if (draft.channel === 'push' || draft.channel === 'both') {
+    if (effectiveChannel === 'push' || effectiveChannel === 'both') {
       const { data, error } = await supabase.functions.invoke('send-push', {
         body: {
           title: draft.title.trim(),
           body: draft.message.trim(),
           deep_link: draft.deep_link.trim() || '/home',
           target_audience: draft.target_audience,
+          target_user_ids:
+            draft.target_audience === 'specific' && selectedUser
+              ? [selectedUser.user_id]
+              : undefined,
         },
       });
       if (error) {
         pushOk = false;
         toast.error(`Push: ${await getFunctionErrorMessage(error)}`);
       } else if (data?.success) {
+        const who =
+          draft.target_audience === 'specific' && selectedUser
+            ? ` to ${selectedUser.username || selectedUser.email || 'user'}`
+            : '';
         toast.success(
-          `Push sent → ${data.success_count}/${data.sent} devices` +
-          (data.invalid_removed ? ` · cleaned ${data.invalid_removed} stale` : ''),
+          `Push sent${who} → ${data.success_count}/${data.sent} devices` +
+            (data.invalid_removed ? ` · cleaned ${data.invalid_removed} stale` : ''),
         );
+        if (data.sent === 0) {
+          toast.warning('Recipient has no registered device. They must open the Android app at least once.');
+        }
       }
     }
 
     setSaving(false);
     if (inAppOk && pushOk) {
-      if (draft.channel === 'in_app') {
-        toast.success(`Banner sent to ${reach[draft.target_audience].toLocaleString()} users`);
+      if (effectiveChannel === 'in_app' && draft.target_audience !== 'specific') {
+        toast.success(`Banner sent to ${(reach as any)[draft.target_audience]?.toLocaleString?.() ?? '?'} users`);
       }
       setDraft({
         title: '', message: '', target_audience: 'all', type: 'info',
         channel: 'both', deep_link: '/home',
       });
+      setSelectedUser(null);
+      setUserQuery('');
+      setUserHits([]);
       setShowCompose(false);
     }
   };
@@ -307,11 +363,92 @@ const PushNotifications = () => {
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                         draft.target_audience === key ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                       }`}>
-                      {audienceLabels[key]} <span className="opacity-60">({reach[key].toLocaleString()})</span>
+                      {audienceLabels[key]}
+                      {key !== 'specific' && (
+                        <span className="opacity-60"> ({(reach as any)[key]?.toLocaleString?.() ?? 0})</span>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {draft.target_audience === 'specific' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <UserCircle2 className="w-4 h-4" /> Send to user
+                  </label>
+                  {selectedUser ? (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {selectedUser.avatar_url ? (
+                          <img src={selectedUser.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                            <UserCircle2 className="w-5 h-5 text-primary" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {selectedUser.username || selectedUser.email || selectedUser.user_id}
+                          </p>
+                          {selectedUser.username && selectedUser.email && (
+                            <p className="text-xs text-muted-foreground truncate">{selectedUser.email}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          className="pl-9"
+                          placeholder="Search by email or username (min 2 chars)"
+                          value={userQuery}
+                          onChange={(e) => setUserQuery(e.target.value)}
+                        />
+                      </div>
+                      {searching && (
+                        <p className="text-xs text-muted-foreground">Searching…</p>
+                      )}
+                      {!searching && userQuery.trim().length >= 2 && userHits.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No users match "{userQuery}".</p>
+                      )}
+                      {userHits.length > 0 && (
+                        <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                          {userHits.map((u) => (
+                            <button
+                              key={u.user_id}
+                              onClick={() => { setSelectedUser(u); setUserQuery(''); setUserHits([]); }}
+                              className="w-full text-left p-3 hover:bg-muted transition-colors flex items-center gap-3"
+                            >
+                              {u.avatar_url ? (
+                                <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                  <UserCircle2 className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{u.username || u.email || u.user_id}</p>
+                                {u.username && u.email && (
+                                  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Specific-user notifications are push-only and require the recipient to have opened the Android app at least once.
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Style (in-app banner)</label>
                 <div className="flex gap-2 flex-wrap">
