@@ -163,13 +163,21 @@ const PushNotifications = () => {
       toast.error('Title and message are required');
       return;
     }
+    if (draft.target_audience === 'specific' && !selectedUser) {
+      toast.error('Pick a user to send to');
+      return;
+    }
+    // Specific user can only receive push (in-app banners are audience-wide)
+    const effectiveChannel: Channel =
+      draft.target_audience === 'specific' ? 'push' : draft.channel;
+
     setSaving(true);
 
     let inAppOk = true;
     let pushOk = true;
 
     // 1) In-app banner
-    if (draft.channel === 'in_app' || draft.channel === 'both') {
+    if (effectiveChannel === 'in_app' || effectiveChannel === 'both') {
       const { error } = await supabase.from('announcements').insert({
         title: draft.title.trim(),
         message: draft.message.trim(),
@@ -184,35 +192,49 @@ const PushNotifications = () => {
     }
 
     // 2) Real push via FCM
-    if (draft.channel === 'push' || draft.channel === 'both') {
+    if (effectiveChannel === 'push' || effectiveChannel === 'both') {
       const { data, error } = await supabase.functions.invoke('send-push', {
         body: {
           title: draft.title.trim(),
           body: draft.message.trim(),
           deep_link: draft.deep_link.trim() || '/home',
           target_audience: draft.target_audience,
+          target_user_ids:
+            draft.target_audience === 'specific' && selectedUser
+              ? [selectedUser.user_id]
+              : undefined,
         },
       });
       if (error) {
         pushOk = false;
         toast.error(`Push: ${await getFunctionErrorMessage(error)}`);
       } else if (data?.success) {
+        const who =
+          draft.target_audience === 'specific' && selectedUser
+            ? ` to ${selectedUser.username || selectedUser.email || 'user'}`
+            : '';
         toast.success(
-          `Push sent → ${data.success_count}/${data.sent} devices` +
-          (data.invalid_removed ? ` · cleaned ${data.invalid_removed} stale` : ''),
+          `Push sent${who} → ${data.success_count}/${data.sent} devices` +
+            (data.invalid_removed ? ` · cleaned ${data.invalid_removed} stale` : ''),
         );
+        if (data.sent === 0) {
+          toast.warning('Recipient has no registered device. They must open the Android app at least once.');
+        }
       }
     }
 
     setSaving(false);
     if (inAppOk && pushOk) {
-      if (draft.channel === 'in_app') {
-        toast.success(`Banner sent to ${reach[draft.target_audience].toLocaleString()} users`);
+      if (effectiveChannel === 'in_app' && draft.target_audience !== 'specific') {
+        toast.success(`Banner sent to ${(reach as any)[draft.target_audience]?.toLocaleString?.() ?? '?'} users`);
       }
       setDraft({
         title: '', message: '', target_audience: 'all', type: 'info',
         channel: 'both', deep_link: '/home',
       });
+      setSelectedUser(null);
+      setUserQuery('');
+      setUserHits([]);
       setShowCompose(false);
     }
   };
