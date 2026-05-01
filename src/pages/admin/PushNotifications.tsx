@@ -83,6 +83,32 @@ const PushNotifications = () => {
     deep_link: '/home',
   });
 
+  // Specific-user picker state
+  const [userQuery, setUserQuery] = useState('');
+  const [userHits, setUserHits] = useState<UserHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserHit | null>(null);
+
+  useEffect(() => {
+    if (draft.target_audience !== 'specific') return;
+    const q = userQuery.trim();
+    if (q.length < 2) { setUserHits([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, email, username, avatar_url')
+        .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
+        .limit(10);
+      if (!cancelled) {
+        setUserHits((data ?? []) as UserHit[]);
+        setSearching(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [userQuery, draft.target_audience]);
+
   const fetchKPIs = useCallback(async () => {
     const { data } = await supabase.from('announcement_events').select('announcement_id, event_type');
     const map: Record<string, KPI> = {};
