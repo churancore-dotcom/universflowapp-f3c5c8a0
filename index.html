@@ -19,7 +19,14 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="format-detection" content="telephone=no" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    
+
+    <!-- Security headers (meta-equivalent; full headers are also set at the Cloudflare/Lovable edge) -->
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: wss: blob: data:; font-src 'self' https: data:; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'" />
+
     <!-- WebView compatibility -->
     <meta name="HandheldFriendly" content="true" />
     <meta name="MobileOptimized" content="width" />
