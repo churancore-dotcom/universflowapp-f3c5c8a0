@@ -109,6 +109,10 @@ const Search = () => {
     return mapped;
   };
 
+  const libraryResults: Song[] = source === 'indexer' ? [] : results;
+
+  const visibleIndexedResults = source === 'all' || source === 'indexer' ? indexedResults : [];
+
   const handlePlayIndexed = useCallback((track: IndexedTrack) => {
     const song: Song = {
       id: track.id,
@@ -131,10 +135,6 @@ const Search = () => {
       source: 'indexed' as const,
     })));
   }, [playSong, visibleIndexedResults]);
-
-  const libraryResults: Song[] = source === 'indexer' ? [] : results;
-
-  const visibleIndexedResults = source === 'all' || source === 'indexer' ? indexedResults : [];
 
   const hasQuery = query.length > 1;
 
