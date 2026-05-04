@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { usePlayerProgress } from '@/lib/playerProgressStore';
 import { Slider } from '@/components/ui/slider';
 import { setLockscreenOpen } from '@/lib/lockscreenState';
 import { 
