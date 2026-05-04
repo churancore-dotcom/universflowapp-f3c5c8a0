@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlayer, type Song } from '@/contexts/PlayerContext';
+import { playerProgressStore } from '@/lib/playerProgressStore';
 import { toast } from 'sonner';
 import { triggerHaptic } from '@/hooks/useHaptics';
 
@@ -136,7 +137,7 @@ const writeStoredRoom = (room: ActiveRoom | null) => {
 
 export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const { currentSong, isPlaying, progress, audioElement, playSong, play, pause, seek } = usePlayer();
+  const { currentSong, isPlaying, audioElement, playSong, play, pause, seek } = usePlayer();
 
   const [room, setRoom] = useState<ActiveRoom | null>(readStoredRoom());
   const [participants, setParticipants] = useState<MateParticipant[]>([]);
@@ -151,11 +152,7 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
   const persistIntervalRef = useRef<number | null>(null);
   const restoringRef = useRef(false);
   const applyingRemoteStateRef = useRef(false);
-  const progressRef = useRef(progress);
-
-  useEffect(() => {
-    progressRef.current = progress;
-  }, [progress]);
+  const progressRef = { get current() { return playerProgressStore.getProgress(); } } as { current: number };
 
   const clearRealtime = useCallback(() => {
     if (broadcastIntervalRef.current) {
@@ -261,7 +258,7 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
         currentSong?.id === remoteSong.id &&
         currentSong?.audio_url === remoteSong.audio_url;
       const remotePosition = Number(payload.playbackPosition) || 0;
-      const localPosition = audioElement?.currentTime ?? progress;
+      const localPosition = audioElement?.currentTime ?? playerProgressStore.getProgress();
 
       applyingRemoteStateRef.current = true;
 
@@ -325,7 +322,7 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
         clearFlag();
       }
     },
-    [audioElement, currentSong?.audio_url, currentSong?.id, pause, play, playSong, progress, seek],
+    [audioElement, currentSong?.audio_url, currentSong?.id, pause, play, playSong, seek],
   );
 
   const persistSessionState = useCallback(

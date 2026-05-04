@@ -3,6 +3,7 @@ import { useMediaSession } from '@/hooks/useMediaSession';
 import { useGlobalAudioEngine } from '@/hooks/useGlobalAudioEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveIndexedTrack, prefetchIndexedTrack } from '@/lib/musicIndexer';
+import { playerProgressStore, usePlayerProgress } from '@/lib/playerProgressStore';
 import { toast } from 'sonner';
 
 interface YouTubePlayer {
@@ -50,8 +51,6 @@ export interface Song {
 interface PlayerContextType {
   currentSong: Song | null;
   isPlaying: boolean;
-  progress: number;
-  duration: number;
   volume: number;
   queue: Song[];
   shuffle: boolean;
@@ -229,8 +228,13 @@ const loadYouTubeIframeApi = (): Promise<typeof window.YT> => {
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // progress/duration live in an external store (playerProgressStore) so the
+  // 250ms tick doesn't rerender every component using usePlayer().
+  const setProgress = (v: number | ((prev: number) => number)) => {
+    const next = typeof v === 'function' ? (v as (p: number) => number)(playerProgressStore.getProgress()) : v;
+    playerProgressStore.setProgress(next);
+  };
+  const setDuration = (v: number) => playerProgressStore.setDuration(v);
   const [volume, setVolumeState] = useState(0.8);
   const [queue, setQueueState] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -451,27 +455,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useGlobalAudioEngine(audioElement);
 
 
-  // Throttled progress loop. Updating React state every animation frame was
-  // making the whole app feel laggy while music played.
-  useEffect(() => {
-    const updateProgress = () => {
-      if (audioRef.current && !audioRef.current.paused && !isCrossfading.current) {
-        const next = audioRef.current.currentTime;
-        setProgress((prev) => (Math.abs(prev - next) > 0.2 ? next : prev));
-      }
-    };
-
-    if (isPlaying) {
-      updateProgress();
-      animationFrameRef.current = window.setInterval(updateProgress, 250);
-    }
-
-    return () => {
-      if (animationFrameRef.current) {
-        window.clearInterval(animationFrameRef.current);
-      }
-    };
-  }, [isPlaying]);
+  // Progress is pushed via the audio element's native `timeupdate` event
+  // (handled in the main audio listener below). No React state interval needed.
 
   // Get next song index - supports shuffle properly by tracking played songs
   const shuffleHistoryRef = useRef<Set<number>>(new Set());
@@ -829,6 +814,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const handleTimeUpdate = () => {
+      // Push progress to the external store (no React rerender of consumers
+      // that don't use usePlayerProgress()).
+      if (!isCrossfading.current) {
+        playerProgressStore.setProgress(audio.currentTime);
+      }
       // Crossfade logic
       if (crossfade && isPremiumUser && !isEqProcessingEnabled() && queue.length > 1 && audio.duration && !isCrossfading.current) {
         const timeLeft = audio.duration - audio.currentTime;
@@ -1331,6 +1321,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     },
   }), [currentSong, queue, currentIndex, shuffle, repeat, getNextIndex, playSongAtIndex]);
 
+  const { progress: liveProgress, duration: liveDuration } = usePlayerProgress();
+
   useMediaSession({
     song: currentSong,
     isPlaying,
@@ -1339,8 +1331,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     onNext: mediaSessionCallbacks.onNext,
     onPrev: mediaSessionCallbacks.onPrev,
     onSeek: mediaSessionCallbacks.onSeek,
-    duration,
-    progress,
+    duration: liveDuration,
+    progress: liveProgress,
   });
 
   // Native Android music controls (lockscreen + notification on APK).
@@ -1367,7 +1359,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             artist: currentSong.artist,
             cover: currentSong.cover_url,
             album: currentSong.album,
-            duration: duration || currentSong.duration,
+            duration: liveDuration || currentSong.duration,
           },
           isPlaying,
         );
@@ -1376,7 +1368,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     })();
     return () => { cancelled = true; };
-  }, [currentSong?.id, isPlaying, duration, mediaSessionCallbacks]);
+  }, [currentSong?.id, isPlaying, liveDuration, mediaSessionCallbacks]);
 
   // Track each played song into local song-history (Spotify-style search history)
   useEffect(() => {
@@ -1388,8 +1380,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <PlayerContext.Provider value={{
       currentSong,
       isPlaying,
-      progress,
-      duration,
       volume,
       queue,
       shuffle,

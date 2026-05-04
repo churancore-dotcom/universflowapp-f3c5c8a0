@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { usePlayerProgress } from '@/lib/playerProgressStore';
 import { Slider } from '@/components/ui/slider';
 import { setLockscreenOpen } from '@/lib/lockscreenState';
 import { 
@@ -60,10 +61,11 @@ const useWakeLock = (enabled: boolean) => {
 
 const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
   const {
-    currentSong, isPlaying, progress, duration, volume,
+    currentSong, isPlaying, volume,
     shuffle, repeat, togglePlay, nextSong, prevSong,
     setVolume, toggleShuffle, toggleRepeat, seek,
   } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
 
   const [time, setTime] = useState(new Date());
   const dragY = useMotionValue(0);
