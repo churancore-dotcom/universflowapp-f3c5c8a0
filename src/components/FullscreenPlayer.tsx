@@ -74,6 +74,7 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
     toggleRepeat,
     setExpanded
   } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
   
   const [showShareModal, setShowShareModal] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
