@@ -1,4 +1,4 @@
-import { useState, memo, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, memo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Shuffle, Repeat, Repeat1, ChevronDown, ListMusic, Share2, Sliders } from 'lucide-react';
 import { usePlayer } from '@/contexts/PlayerContext';
@@ -64,9 +64,7 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
     volume,
     shuffle,
     repeat,
-    queue,
     isExpanded,
-    playSong,
     togglePlay,
     nextSong,
     prevSong,
@@ -85,24 +83,6 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
   const [direction, setDirection] = useState(0);
   const prevSongIdRef = useRef<string | null>(null);
   const navigate = useNavigate();
-
-  const vibeSuggestions = useMemo(() => {
-    if (!currentSong) return [];
-    const currentMood = currentSong.mood?.toLowerCase().trim();
-    const currentGenre = currentSong.genre?.toLowerCase().trim();
-    return queue
-      .filter((song) => song.id !== currentSong.id)
-      .map((song) => {
-        const moodMatch = currentMood && song.mood?.toLowerCase().trim() === currentMood ? 4 : 0;
-        const genreMatch = currentGenre && song.genre?.toLowerCase().trim() === currentGenre ? 2 : 0;
-        const differentArtist = song.artist.toLowerCase() !== currentSong.artist.toLowerCase() ? 1 : 0;
-        return { song, score: moodMatch + genreMatch + differentArtist };
-      })
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 8)
-      .map((item) => item.song);
-  }, [currentSong, queue]);
 
   useEffect(() => {
     if (currentSong?.id && currentSong.id !== prevSongIdRef.current) {
