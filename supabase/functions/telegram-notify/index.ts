@@ -70,6 +70,47 @@ Deno.serve(async (req) => {
       // User events: ignore client-supplied email/user_id, force the authenticated identity
       body.email = callerEmail ?? body.email;
       body.user_id = callerId;
+
+      // Per-user rate limit: max 5 notifications per minute
+      const { data: allowed } = await supabaseClient.rpc('check_and_increment_rate_limit', {
+        _user_id: callerId,
+        _endpoint: 'telegram-notify',
+        _max_per_minute: 5,
+      });
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // For payment_submitted: require a matching payment_requests row owned by caller
+      // to prevent flooding admin Telegram with fabricated payment notifications.
+      if (body.event === 'payment_submitted') {
+        if (!body.utr || typeof body.utr !== 'string') {
+          return new Response(JSON.stringify({ error: 'UTR required' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const { data: pr, error: prErr } = await supabaseClient
+          .from('payment_requests')
+          .select('id, amount_paise, plan')
+          .eq('user_id', callerId)
+          .eq('utr_number', body.utr.trim())
+          .maybeSingle();
+        if (prErr || !pr) {
+          return new Response(JSON.stringify({ error: 'No matching payment request' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        // Use server-side values; ignore client-supplied amount/plan
+        body.amount_inr = Math.round((pr.amount_paise ?? 0) / 100);
+        body.plan = pr.plan ?? body.plan;
+      }
+
+      // Cap free-text fields to prevent abuse
+      if (body.note && typeof body.note === 'string') body.note = body.note.slice(0, 200);
+      if (body.utr && typeof body.utr === 'string') body.utr = body.utr.slice(0, 50);
+      if (body.plan && typeof body.plan === 'string') body.plan = body.plan.slice(0, 40);
     }
 
     const emoji: Record<string, string> = {
