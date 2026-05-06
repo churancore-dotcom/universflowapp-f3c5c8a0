@@ -80,6 +80,12 @@ function ensureCtx(): AudioContext | null {
   if (!AC) return null;
   try {
     engine.ctx = new AC();
+    // Auto-resume if Android/iOS suspends the context while backgrounded.
+    engine.ctx.addEventListener('statechange', () => {
+      if (engine.ctx?.state === 'suspended') {
+        engine.ctx.resume().catch(() => {});
+      }
+    });
     return engine.ctx;
   } catch {
     return null;
