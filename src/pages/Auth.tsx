@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, MailCheck, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { FadeTransition } from '@/components/PageTransition';
+import { supabase } from '@/integrations/supabase/client';
 import appLogo from '@/assets/app-logo.png';
 
 const Auth = () => {
@@ -15,6 +16,8 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifySent, setVerifySent] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -32,7 +35,13 @@ const Auth = () => {
       if (isLogin) {
         const { error, isAdmin } = await signIn(email, password);
         if (error) {
-          toast.error(error.message);
+          const msg = error.message.toLowerCase();
+          if (msg.includes('email not confirmed') || msg.includes('not verified') || msg.includes('confirm')) {
+            setVerifySent(email);
+            toast.error('Please verify your email first');
+          } else {
+            toast.error(error.message);
+          }
         } else {
           toast.success('Welcome back!');
           navigate(isAdmin ? '/admin' : '/home');
@@ -40,18 +49,39 @@ const Auth = () => {
       } else {
         const { error } = await signUp(email, password);
         if (error) {
-          toast.error(error.message);
+          const msg = error.message.toLowerCase();
+          if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+            toast.error('That email is already registered. Please sign in instead.');
+            setIsLogin(true);
+          } else {
+            toast.error(error.message);
+          }
         } else {
-          // Mark this session as fresh signup so the artist picker triggers
-          localStorage.setItem('uf_just_signed_up', '1');
-          toast.success('Account created successfully!');
-          navigate('/home');
+          // Mark for picker after they verify and sign in for the first time
+          localStorage.setItem('uf_pending_picker_email', email.toLowerCase());
+          setVerifySent(email);
         }
       }
     } catch {
       toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!verifySent) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: verifySent,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) toast.error(error.message);
+      else toast.success('Verification email sent again');
+    } finally {
+      setResending(false);
     }
   };
 
