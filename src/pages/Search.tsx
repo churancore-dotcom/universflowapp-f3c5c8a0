@@ -31,7 +31,7 @@ const Search = () => {
   const [indexedResults, setIndexedResults] = useState<IndexedTrack[]>([]);
   const [searching, setSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [source, setSource] = useState<SearchSource>('all');
+  const [source, setSource] = useState<SearchSource>('originals');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<SongHistoryEntry[]>(() => getSongHistory().filter(entry => !isCatalogSongId(entry.id)));
   const { playSong, currentSong, isPlaying } = usePlayer();
