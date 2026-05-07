@@ -59,6 +59,7 @@ const loadLikeCache = async (userId: string): Promise<void> => {
 
 export const useLike = (songId: string, song?: Song | null) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const mountedRef = useRef(true);
