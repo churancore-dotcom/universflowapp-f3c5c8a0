@@ -11,6 +11,7 @@ import AllSongsSection from '@/components/AllSongsSection';
 
 import GlobalTopTracksSection from '@/components/GlobalTopTracksSection';
 import FollowedArtistSongsSection from '@/components/FollowedArtistSongsSection';
+import QuickPicksGrid from '@/components/QuickPicksGrid';
 import SleepTimerModal from '@/components/SleepTimerModal';
 import QueueDrawer from '@/components/QueueDrawer';
 import BottomNav from '@/components/BottomNav';
