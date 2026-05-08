@@ -377,7 +377,7 @@ const QuickActionsRow = memo(({ navigate }: { navigate: (p: string) => void }) =
     { label: 'Liked Songs', icon: Heart, to: '/library', gradient: 'linear-gradient(135deg, hsl(350 100% 60%), hsl(330 100% 50%))' },
     { label: 'Trending', icon: Flame, to: '/search?q=trending', gradient: 'linear-gradient(135deg, hsl(20 100% 55%), hsl(0 100% 55%))' },
     { label: 'Discover', icon: Sparkles, to: '/search', gradient: 'linear-gradient(135deg, hsl(280 100% 60%), hsl(250 100% 60%))' },
-    { label: 'Radio', icon: Radio, to: '/library', gradient: 'linear-gradient(135deg, hsl(200 100% 55%), hsl(180 100% 45%))' },
+    { label: 'Listen Together', icon: Radio, to: '/listen-together', gradient: 'linear-gradient(135deg, hsl(200 100% 55%), hsl(180 100% 45%))' },
   ];
   return (
     <div className="grid grid-cols-2 gap-2.5 px-1">
