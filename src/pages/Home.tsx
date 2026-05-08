@@ -18,11 +18,20 @@ import OfflineIndicator from '@/components/OfflineIndicator';
 import { TabTransition } from '@/components/PageTransition';
 import {
   Music, Lock, ListMusic, Sliders, Search, Play, Pause, Sparkles, Flame,
-  Headphones, Radio, Heart, Compass, ArrowUpRight,
+  Headphones, Radio, Heart, Compass, ArrowUpRight, Loader2,
 } from 'lucide-react';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import appLogo from '@/assets/app-logo.png';
 import { HomeSkeleton } from '@/components/PageSkeletons';
+import {
+  getTopIndexedTracks,
+  resolveIndexedTrack,
+  forceResolveIndexedTrack,
+  prefetchIndexedTrack,
+  detectCountry,
+  type IndexedTrack,
+} from '@/lib/musicIndexer';
+import { flagFor, nameFor } from '@/lib/countries';
 
 const HOME_SONGS_QUERY_KEY = ['home', 'songs'] as const;
 
