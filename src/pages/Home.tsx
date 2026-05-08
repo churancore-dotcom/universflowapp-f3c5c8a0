@@ -374,6 +374,7 @@ const Home = () => {
             isOpen={!!addToPlaylistSong}
             onClose={() => setAddToPlaylistSong(null)}
             song={addToPlaylistSong}
+            onCreateNew={() => { setAddToPlaylistSong(null); navigate('/library'); }}
           />
         )}
         <OfflineIndicator />
