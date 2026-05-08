@@ -116,61 +116,21 @@ const Profile = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  {isEditingUsername ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <Input
-                        value={newUsername}
-                        onChange={(e) => setNewUsername(e.target.value)}
-                        className="h-8 text-sm bg-white/10 border-white/20"
-                        placeholder="Enter username"
-                        maxLength={20}
-                        autoFocus
-                      />
-                      <button
-                        onClick={handleSaveUsername}
-                        disabled={isSaving}
-                        className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center"
-                      >
-                        <Check className="w-4 h-4 text-green-400" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingUsername(false);
-                          setNewUsername(profileData.username || '');
-                        }}
-                        className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center"
-                      >
-                        <X className="w-4 h-4 text-red-400" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <h2 className="text-base font-bold truncate">{displayName}</h2>
-                      {canChangeUsername && (
-                        <button
-                          onClick={() => setIsEditingUsername(true)}
-                          className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"
-                        >
-                          <Edit2 className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                      )}
-                      {isPremium && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#000' }}>
-                          PREMIUM
-                        </span>
-                      )}
-                    </>
+                  <h2 className="text-base font-bold truncate">{displayName}</h2>
+                  {isPremium && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#000' }}>
+                      PREMIUM
+                    </span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
                   <Mail className="w-3 h-3" />
                   {user?.email}
                 </p>
-                {!isEditingUsername && (
-                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                    {profileData.username_changed
-                      ? 'Username is locked (can only be set once)'
-                      : 'Tap pencil to set your username (one-time only)'}
+                {profileData.country_code && (
+                  <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1">
+                    <span>{flagFor(profileData.country_code)}</span>
+                    <span>{nameFor(profileData.country_code)}</span>
                   </p>
                 )}
                 {isAdmin && (
