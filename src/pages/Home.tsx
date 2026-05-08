@@ -14,6 +14,9 @@ import FollowedArtistSongsSection from '@/components/FollowedArtistSongsSection'
 import QuickPicksGrid from '@/components/QuickPicksGrid';
 import ArtistsRail from '@/components/home/ArtistsRail';
 import ViralByCountrySection from '@/components/home/ViralByCountrySection';
+import HeroCarousel from '@/components/home/HeroCarousel';
+import CuratedCollections from '@/components/home/CuratedCollections';
+import NewForYouBanner from '@/components/home/NewForYouBanner';
 import SleepTimerModal from '@/components/SleepTimerModal';
 import QueueDrawer from '@/components/QueueDrawer';
 import BottomNav from '@/components/BottomNav';
