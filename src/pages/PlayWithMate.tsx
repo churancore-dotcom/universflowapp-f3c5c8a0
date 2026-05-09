@@ -13,12 +13,15 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { usePlayWithMate } from '@/contexts/PlayWithMateContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { toast } from 'sonner';
+import { usePremium } from '@/hooks/usePremium';
+import PremiumLockOverlay from '@/components/PremiumLockOverlay';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '😂', '🎶', '🥹', '🙌'];
 
 const PlayWithMate = () => {
   const navigate = useNavigate();
   const { currentSong } = usePlayer();
+  const { isPremium, isLoading: premiumLoading } = usePremium();
   const {
     isConnected, loading, room, participants, reactions, inviteUrl, suggestions,
     createSession, joinSession, leaveSession, sendReaction, kickParticipant,
@@ -58,6 +61,14 @@ const PlayWithMate = () => {
   const qrUrl = inviteUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(inviteUrl)}`
     : null;
+
+  if (!premiumLoading && !isPremium) {
+    return (
+      <PageTransition>
+        <PremiumLockOverlay title="Play with Mate is Premium" onClose={() => navigate(-1)} />
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
