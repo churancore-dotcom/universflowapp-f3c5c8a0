@@ -231,19 +231,15 @@ const PostAuthGate = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
-  // Open artist picker after signup OR first sign-in following email verification
+  // Open artist picker ONLY immediately after signup (not on every login)
   useEffect(() => {
     if (!user) return;
-
     const justSignedUp = localStorage.getItem('uf_just_signed_up');
-    const pendingEmail = localStorage.getItem('uf_pending_picker_email');
-    const matchesPending = pendingEmail && user.email && pendingEmail === user.email.toLowerCase();
-    if (!justSignedUp && !matchesPending) return;
+    if (!justSignedUp) return;
 
     const key = `uf_artists_picked_${user.id}`;
     if (localStorage.getItem(key)) {
       localStorage.removeItem('uf_just_signed_up');
-      localStorage.removeItem('uf_pending_picker_email');
       return;
     }
 
@@ -253,7 +249,6 @@ const PostAuthGate = () => {
         if (data && data.length > 0) {
           localStorage.setItem(key, '1');
           localStorage.removeItem('uf_just_signed_up');
-          localStorage.removeItem('uf_pending_picker_email');
         } else {
           setTimeout(() => setShowPicker(true), 600);
         }
@@ -262,7 +257,6 @@ const PostAuthGate = () => {
 
   const handlePickerComplete = () => {
     localStorage.removeItem('uf_just_signed_up');
-    localStorage.removeItem('uf_pending_picker_email');
     setShowPicker(false);
   };
 

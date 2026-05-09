@@ -316,23 +316,6 @@ async function getDeezerArtwork(artist: string, title: string): Promise<string |
   }
 }
 
-async function getAudioDbArtwork(artist: string, title: string): Promise<string | undefined> {
-  const cacheKey = `audiodb-art:${artist}:${title}`;
-  const cached = getCached<string | null>(cacheKey);
-  if (cached !== null) return cached || undefined;
-  try {
-    const url = `https://www.theaudiodb.com/api/v1/json/2/searchtrack.php?s=${encodeURIComponent(artist)}&t=${encodeURIComponent(title)}`;
-    const data = await fetchJson(url, 5000);
-    const t = Array.isArray(data?.track) ? data.track[0] : null;
-    const art = sanitizeArtwork(String(t?.strTrackThumb || t?.strAlbumThumb || ''));
-    setCached(cacheKey, art || null, 12 * 60 * 60 * 1000);
-    return art;
-  } catch {
-    setCached(cacheKey, null, 30 * 60 * 1000);
-    return undefined;
-  }
-}
-
 async function resolveArtwork(artist: string, title: string, preferred?: string) {
   const safePreferred = sanitizeArtwork(preferred);
   if (safePreferred) return safePreferred;
@@ -340,10 +323,7 @@ async function resolveArtwork(artist: string, title: string, preferred?: string)
   const deezerArtwork = await getDeezerArtwork(artist, title);
   if (deezerArtwork) return deezerArtwork;
 
-  const itunes = await getItunesArtwork(artist, title);
-  if (itunes) return itunes;
-
-  return getAudioDbArtwork(artist, title);
+  return getItunesArtwork(artist, title);
 }
 
 async function fetchJson(url: string, timeoutMs = 6000) {
@@ -618,98 +598,49 @@ const DISCOVERY_TAGS = [
   'dance', 'k-pop', 'latin', 'edm', 'rap', 'house', 'alternative', 'trap',
 ];
 
-// Geo-aware tag map: country code → preferred Last.fm tags
-const GEO_TAGS: Record<string, string[]> = {
-  IN: ['bollywood', 'punjabi', 'hindi', 'indian'],
-  US: ['pop', 'hip-hop', 'rap', 'r&b'],
-  GB: ['uk', 'pop', 'indie', 'rock'],
-  KR: ['k-pop', 'korean'],
-  JP: ['j-pop', 'japanese'],
-  BR: ['brasileiro', 'latin', 'sertanejo'],
-  MX: ['latin', 'reggaeton', 'regional mexicano'],
-  ES: ['latin', 'spanish', 'reggaeton'],
-  FR: ['french', 'pop', 'rap'],
-  DE: ['german', 'pop', 'rock'],
-  ID: ['indonesian', 'pop'],
-  PH: ['opm', 'pop'],
-  TR: ['turkish', 'pop'],
-  NG: ['afrobeats', 'afro'],
-  PK: ['pakistani', 'bollywood'],
-  BD: ['bengali', 'bollywood'],
-  SA: ['arabic', 'pop'],
-  AE: ['arabic', 'pop'],
-  RU: ['russian', 'pop'],
-};
-
-const GLOBAL_TAGS = ['pop', 'hip-hop', 'rock', 'electronic', 'r&b', 'indie', 'dance', 'k-pop', 'latin'];
-
-async function getTopTracks(limit = 30, country?: string) {
-  const cc = (country || '').toUpperCase().slice(0, 2);
-  const geoTags = GEO_TAGS[cc] || [];
+async function getTopTracks(limit = 30) {
+  // Rotation key changes every ~5 minutes so the chart visibly refreshes
   const rotation = Math.floor(Date.now() / (5 * 60 * 1000));
-  const ck = `viral-rotated:${cc || 'global'}:${limit}:${rotation}`;
+  const ck = `top-rotated:${limit}:${rotation}`;
   const c = getCached<IndexedTrack[]>(ck);
   if (c) return c;
 
-  // Viral-first: tag.gettoptracks for viral / tiktok / trending tags.
-  // Each Last.fm tag list comes pre-ranked by popularity for that tag.
-  const viralTags = ['viral', 'tiktok', 'trending', 'new'];
-  const tagPool = geoTags.length
-    ? [...viralTags, ...geoTags.slice(0, 2)]
-    : viralTags;
-  const perBucket = Math.max(limit, 30);
+  // Pick 2 random tags + global chart for the freshest blend
+  const shuffled = [...DISCOVERY_TAGS].sort(() => Math.random() - 0.5);
+  const picks = shuffled.slice(0, 2);
+  const perBucket = Math.ceil(limit / 2) + 5;
 
-  const buckets: LastFmTrack[][] = await Promise.all(
-    tagPool.map((tag) =>
-      fetchJson(buildLastFmUrl('tag.gettoptracks', {
-        tag,
-        limit: String(perBucket),
-        page: String((rotation % 2) + 1),
-      }))
+  const fetches: Promise<LastFmTrack[]>[] = [
+    fetchJson(buildLastFmUrl('chart.gettoptracks', { limit: String(perBucket), page: String((rotation % 3) + 1) }))
+      .then((d) => (Array.isArray(d?.tracks?.track) ? d.tracks.track : []))
+      .catch(() => []),
+    ...picks.map((tag) =>
+      fetchJson(buildLastFmUrl('tag.gettoptracks', { tag, limit: String(perBucket), page: String((rotation % 4) + 1) }))
         .then((d) => (Array.isArray(d?.tracks?.track) ? d.tracks.track : []))
-        .catch(() => [])
-    )
-  );
+        .catch(() => []),
+    ),
+  ];
 
-  // Preserve Last.fm rank: first-position tracks across buckets win.
-  const ranked: { track: LastFmTrack; rank: number }[] = [];
-  const seen = new Set<string>();
-  const maxLen = Math.max(0, ...buckets.map((b) => b.length));
+  const buckets = await Promise.all(fetches);
+  const merged: LastFmTrack[] = [];
+  // Interleave so chart top + tag picks mix nicely
+  const maxLen = Math.max(...buckets.map((b) => b.length));
   for (let i = 0; i < maxLen; i += 1) {
     for (const bucket of buckets) {
-      const t = bucket[i];
-      if (!t?.name) continue;
-      const key = `${getArtistName(t.artist)}::${t.name}`.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      ranked.push({ track: t, rank: i + 1 });
+      if (bucket[i]) merged.push(bucket[i]);
     }
   }
-  ranked.sort((a, b) => a.rank - b.rank);
 
-  const enriched = await Promise.all(
-    ranked.slice(0, limit + 8).map(async ({ track }) => {
-      const info = track.name ? await getTrackInfo(getArtistName(track.artist), track.name) : null;
-      const mapped = mapTrack(track, info);
-      return mapped ? hydrateTrackArtwork(mapped) : null;
-    })
-  );
-  const unique = uniqueTracks(enriched);
+  const enriched = await Promise.all(merged.slice(0, limit + 4).map(async (t) => {
+    const info = t.name ? await getTrackInfo(getArtistName(t.artist), t.name) : null;
+    const mapped = mapTrack(t, info);
+    return mapped ? hydrateTrackArtwork(mapped) : null;
+  }));
+  // Re-shuffle slightly so order doesn't feel mechanical
+  const unique = uniqueTracks(enriched).sort(() => Math.random() - 0.35);
   const results = unique.slice(0, limit).map((t, i) => ({ ...t, rank: i + 1 }));
   setCached(ck, results, 5 * 60 * 1000);
   return results;
-}
-
-function countryCodeToName(cc: string): string {
-  const map: Record<string, string> = {
-    IN: 'India', US: 'United States', GB: 'United Kingdom', KR: 'South Korea',
-    JP: 'Japan', BR: 'Brazil', MX: 'Mexico', ES: 'Spain', FR: 'France',
-    DE: 'Germany', ID: 'Indonesia', PH: 'Philippines', TR: 'Turkey',
-    NG: 'Nigeria', PK: 'Pakistan', BD: 'Bangladesh', SA: 'Saudi Arabia',
-    AE: 'United Arab Emirates', RU: 'Russia', CA: 'Canada', AU: 'Australia',
-    IT: 'Italy', NL: 'Netherlands', SE: 'Sweden', AR: 'Argentina', CO: 'Colombia',
-  };
-  return map[cc] || 'United States';
 }
 
 // ── Video search & scoring ──
@@ -1182,26 +1113,9 @@ serve(async (req) => {
 
     if (action === 'top') {
       const limit = Math.max(1, Math.min(50, typeof body.limit === 'number' ? body.limit : 30));
-      let country = typeof body.country === 'string' ? body.country.toUpperCase().slice(0, 2) : '';
-      // Server-side geo from request IP — overrides client when client didn't supply one.
-      if (!country) {
-        country = (req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || '').toUpperCase().slice(0, 2);
-      }
-      if (!country) {
-        try {
-          const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '').split(',')[0].trim();
-          if (ip && !/^(10\.|192\.168\.|127\.|::1)/.test(ip)) {
-            const geo = await fetch(`https://ipapi.co/${ip}/country/`, { signal: AbortSignal.timeout(2500) });
-            if (geo.ok) {
-              const txt = (await geo.text()).trim().toUpperCase();
-              if (/^[A-Z]{2}$/.test(txt)) country = txt;
-            }
-          }
-        } catch { /* ignore */ }
-      }
       try {
-        const results = await getTopTracks(limit, country);
-        return new Response(JSON.stringify({ success: true, results, country }), {
+        const results = await getTopTracks(limit);
+        return new Response(JSON.stringify({ success: true, results }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (error) {

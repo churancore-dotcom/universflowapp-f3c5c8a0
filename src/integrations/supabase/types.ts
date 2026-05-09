@@ -750,7 +750,6 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          country_code: string | null
           created_at: string
           email: string | null
           id: string
@@ -764,7 +763,6 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          country_code?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -778,7 +776,6 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          country_code?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -950,60 +947,6 @@ export type Database = {
           recipient_id?: string
           sender_id?: string
           song_id?: string
-        }
-        Relationships: []
-      }
-      song_play_events: {
-        Row: {
-          action: string
-          artist: string
-          city: string | null
-          country_code: string | null
-          country_name: string | null
-          cover_url: string | null
-          created_at: string
-          id: string
-          score_weight: number
-          session_id: string | null
-          song_id: string | null
-          source: string
-          title: string
-          track_id: string
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          artist: string
-          city?: string | null
-          country_code?: string | null
-          country_name?: string | null
-          cover_url?: string | null
-          created_at?: string
-          id?: string
-          score_weight: number
-          session_id?: string | null
-          song_id?: string | null
-          source?: string
-          title: string
-          track_id: string
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          artist?: string
-          city?: string | null
-          country_code?: string | null
-          country_name?: string | null
-          cover_url?: string | null
-          created_at?: string
-          id?: string
-          score_weight?: number
-          session_id?: string | null
-          song_id?: string | null
-          source?: string
-          title?: string
-          track_id?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -1383,30 +1326,6 @@ export type Database = {
         }
         Relationships: []
       }
-      viral_chart_refreshes: {
-        Row: {
-          city: string | null
-          country_code: string | null
-          id: string
-          scope: string
-          updated_at: string
-        }
-        Insert: {
-          city?: string | null
-          country_code?: string | null
-          id?: string
-          scope: string
-          updated_at?: string
-        }
-        Update: {
-          city?: string | null
-          country_code?: string | null
-          id?: string
-          scope?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1438,31 +1357,6 @@ export type Database = {
         }[]
       }
       get_user_count: { Args: never; Returns: number }
-      get_viral_song_events: {
-        Args: {
-          p_city?: string
-          p_country_code?: string
-          p_limit?: number
-          p_since_hours?: number
-        }
-        Returns: {
-          artist: string
-          city: string
-          country_code: string
-          cover_url: string
-          last_event_at: string
-          playlist_add_count: number
-          save_count: number
-          score: number
-          share_count: number
-          skip_count: number
-          song_id: string
-          source: string
-          stream_count: number
-          title: string
-          track_id: string
-        }[]
-      }
       has_premium_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {

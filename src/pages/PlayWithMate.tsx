@@ -13,15 +13,12 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { usePlayWithMate } from '@/contexts/PlayWithMateContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { toast } from 'sonner';
-import { usePremium } from '@/hooks/usePremium';
-import { Crown } from 'lucide-react';
 
 const QUICK_REACTIONS = ['❤️', '🔥', '😂', '🎶', '🥹', '🙌'];
 
 const PlayWithMate = () => {
   const navigate = useNavigate();
   const { currentSong } = usePlayer();
-  const { isPremium, isLoading: premiumLoading } = usePremium();
   const {
     isConnected, loading, room, participants, reactions, inviteUrl, suggestions,
     createSession, joinSession, leaveSession, sendReaction, kickParticipant,
@@ -83,22 +80,6 @@ const PlayWithMate = () => {
           )}
         </header>
 
-        {!premiumLoading && !isPremium && !isConnected ? (
-          <main className="flex-1 overflow-y-auto px-4 pt-8 pb-32 flex flex-col items-center justify-start text-center">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
-              style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.5))' }}>
-              <Crown className="w-10 h-10 text-primary-foreground" />
-            </div>
-            <h2 className="text-xl font-bold mb-2">Play with Mate is Premium</h2>
-            <p className="text-sm text-muted-foreground max-w-xs mb-6">
-              Listen in perfect sync with friends, react in real time, and share the vibe — available exclusively for Premium members.
-            </p>
-            <Button onClick={() => { triggerHaptic('selection'); navigate('/premium'); }} className="rounded-2xl h-12 px-8 font-semibold">
-              Upgrade to Premium
-            </Button>
-            <button onClick={() => navigate(-1)} className="mt-3 text-xs text-muted-foreground py-2">Maybe later</button>
-          </main>
-        ) : (
         <main className="flex-1 overflow-y-auto px-4 pt-5 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
           <AnimatePresence mode="wait">
             {!isConnected ? (
@@ -435,7 +416,6 @@ const PlayWithMate = () => {
             )}
           </AnimatePresence>
         </main>
-        )}
 
         <BottomNav />
       </div>

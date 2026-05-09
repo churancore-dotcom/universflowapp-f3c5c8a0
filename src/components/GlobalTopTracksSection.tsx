@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Music2, Play, Pause, Flame } from 'lucide-react';
+import { Loader2, Music2, Radio } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
-import { getTopIndexedTracks, prefetchIndexedTrack, resolveIndexedTrack, forceResolveIndexedTrack, type IndexedTrack } from '@/lib/musicIndexer';
-import { triggerHaptic } from '@/hooks/useHaptics';
+import { getTopIndexedTracks, prefetchIndexedTrack, resolveIndexedTrack, type IndexedTrack } from '@/lib/musicIndexer';
 
 const GlobalTopTracksSection = () => {
   const [tracks, setTracks] = useState<IndexedTrack[]>([]);
@@ -12,32 +12,43 @@ const GlobalTopTracksSection = () => {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const loadTopTracks = async () => {
       try {
         const data = await getTopIndexedTracks(30);
-        if (!cancelled) setTracks(data);
-      } catch (e) {
-        console.warn('viral load failed', e);
+        if (!cancelled) {
+          setTracks(data);
+        }
+      } catch (error) {
+        console.error('Failed to load top tracks:', error);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    void loadTopTracks();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    tracks.slice(0, 6).forEach((t) => prefetchIndexedTrack(t.artist, t.title));
+    tracks.slice(0, 8).forEach((track) => {
+      prefetchIndexedTrack(track.artist, track.title);
+    });
   }, [tracks]);
 
   const handlePlay = useCallback(async (track: IndexedTrack) => {
-    triggerHaptic('selection');
     setResolvingId(track.id);
     try {
-      let resolved = await resolveIndexedTrack(track.artist, track.title);
+      const resolved = await resolveIndexedTrack(track.artist, track.title);
       if (!resolved.streamUrl) {
-        resolved = await forceResolveIndexedTrack(track.artist, track.title);
+        throw new Error('No stream available for this track');
       }
-      if (!resolved.streamUrl) return;
+
       const song: Song = {
         id: track.id,
         title: resolved.title || track.title,
@@ -48,188 +59,99 @@ const GlobalTopTracksSection = () => {
         duration: resolved.duration || track.duration,
         source: 'indexed',
       };
-      const queue: Song[] = tracks.map((t) => ({
+
+      const allSongs: Song[] = tracks.map(t => ({
         id: t.id, title: t.title, artist: t.artist, album: t.album,
         cover_url: t.cover_url, audio_url: 'resolving', source: 'indexed' as const,
       }));
-      playSong(song, undefined, queue);
-    } catch (e) {
-      console.warn('viral play failed', e);
+      playSong(song, undefined, allSongs);
+    } catch (error) {
+      console.error('Failed to resolve top track:', error);
+      toast.error(error instanceof Error ? error.message : 'Could not play this track');
     } finally {
       setResolvingId(null);
     }
-  }, [playSong, tracks]);
+  }, [playSong]);
 
   if (loading) {
     return (
-      <section className="space-y-3 px-1">
-        <div className="flex items-center gap-2">
-          <Flame className="w-5 h-5 text-primary" />
-          <h2 className="text-[22px] font-extrabold tracking-tight">Trending Now</h2>
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <Radio className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">Global Top 30</h2>
         </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-square w-full rounded-3xl bg-muted/40 animate-pulse" />
-        ))}
+        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="w-40 flex-shrink-0 rounded-3xl border border-border/50 bg-card/60 p-3 animate-pulse">
+              <div className="mb-3 aspect-square rounded-2xl bg-muted/60" />
+              <div className="h-3 rounded bg-muted/60 mb-2" />
+              <div className="h-3 w-2/3 rounded bg-muted/40" />
+            </div>
+          ))}
+        </div>
       </section>
     );
   }
 
-  if (!tracks.length) return null;
-
-  const featured = tracks[0];
-  const rest = tracks.slice(1);
+  if (tracks.length === 0) return null;
 
   return (
-    <section className="space-y-4 px-1">
-      <div className="flex items-end justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-primary" />
-            <h2 className="text-[22px] font-extrabold tracking-tight text-foreground">Trending Now</h2>
-          </div>
-          <p className="text-[12px] text-muted-foreground mt-0.5 font-medium">
-            Going viral worldwide · ranked
-          </p>
+    <section className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <Radio className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">Global Top 30</h2>
         </div>
       </div>
 
-      {/* Featured #1 — large social-card */}
-      <FeedCard
-        track={featured}
-        rank={1}
-        size="hero"
-        active={currentSong?.id === featured.id}
-        playing={isPlaying}
-        resolving={resolvingId === featured.id}
-        onPlay={() => handlePlay(featured)}
-      />
+      <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+        {tracks.map((track, index) => {
+          const isActive = currentSong?.id === track.id;
+          const isResolving = resolvingId === track.id;
 
-      {/* Vertical feed */}
-      <div className="space-y-3">
-        {rest.map((t, i) => (
-          <FeedCard
-            key={t.id}
-            track={t}
-            rank={i + 2}
-            size="row"
-            active={currentSong?.id === t.id}
-            playing={isPlaying}
-            resolving={resolvingId === t.id}
-            onPlay={() => handlePlay(t)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-};
+          return (
+            <button
+              key={track.id}
+              type="button"
+              onClick={() => !isResolving && handlePlay(track)}
+              className="w-40 flex-shrink-0 rounded-3xl border border-border/50 bg-card/70 p-3 text-left transition-transform active:scale-[0.98]"
+            >
+              <div className="relative mb-3 aspect-square overflow-hidden rounded-2xl bg-muted/50">
+                {track.cover_url ? (
+                  <img
+                    src={track.cover_url}
+                    alt={`${track.title} cover art`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Music2 className="w-7 h-7 text-muted-foreground" />
+                  </div>
+                )}
 
-interface FeedCardProps {
-  track: IndexedTrack;
-  rank: number;
-  size: 'hero' | 'row';
-  active: boolean;
-  playing: boolean;
-  resolving: boolean;
-  onPlay: () => void;
-}
+                {(isResolving || (isActive && isPlaying)) && (
+                  <div className="absolute bottom-2 right-2 rounded-full border border-border/60 bg-background/85 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    {isResolving ? '...' : '▶'}
+                  </div>
+                )}
+              </div>
 
-const FeedCard = ({ track, rank, size, active, playing, resolving, onPlay }: FeedCardProps) => {
-  if (size === 'hero') {
-    return (
-      <button
-        type="button"
-        onClick={onPlay}
-        className="group relative w-full overflow-hidden rounded-3xl text-left active:scale-[0.99] transition-transform"
-        style={{ aspectRatio: '1 / 1', boxShadow: '0 18px 50px -12px rgba(0,0,0,0.7)' }}
-      >
-        {track.cover_url ? (
-          <img
-            src={track.cover_url}
-            alt={`${track.title} by ${track.artist}`}
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="eager"
-            decoding="async"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-muted flex items-center justify-center">
-            <Music2 className="w-16 h-16 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Top-left: viral rank badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 shadow-lg">
-          <Flame className="w-3.5 h-3.5 text-primary-foreground" />
-          <span className="text-[11px] font-extrabold tracking-wider text-primary-foreground">
-            #{rank} VIRAL
-          </span>
-        </div>
-
-        {/* Bottom gradient + text + play */}
-        <div className="absolute inset-x-0 bottom-0 p-5 pt-20"
-             style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0.95) 100%)' }}>
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-white text-[22px] font-extrabold leading-tight tracking-tight line-clamp-2"
-                 style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
+              <p className={`truncate text-[13px] font-semibold ${isActive ? 'text-primary' : 'text-foreground'}`}>
                 {track.title}
               </p>
-              <p className="text-white/80 text-[14px] font-semibold mt-1 truncate">
-                {track.artist}
-              </p>
-            </div>
-            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-2xl">
-              {resolving ? (
-                <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
-              ) : active && playing ? (
-                <Pause className="w-6 h-6 text-primary-foreground" fill="currentColor" />
-              ) : (
-                <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
-              )}
-            </div>
-          </div>
-        </div>
-      </button>
-    );
-  }
-
-  // Row card
-  return (
-    <button
-      type="button"
-      onClick={onPlay}
-      className="group relative flex w-full items-center gap-3 rounded-2xl p-2 text-left active:scale-[0.98] transition-transform"
-      style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-        border: '0.5px solid rgba(255,255,255,0.08)',
-      }}
-    >
-      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
-        {track.cover_url ? (
-          <img src={track.cover_url} alt={track.title} className="h-full w-full object-cover" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center"><Music2 className="w-7 h-7 text-muted-foreground" /></div>
-        )}
-        <div className="absolute top-1 left-1 rounded-md bg-black/70 px-1.5 py-0.5">
-          <span className="text-[10px] font-extrabold text-white">#{rank}</span>
-        </div>
+              <p className="mt-1 truncate text-[11px] text-muted-foreground">{track.artist}</p>
+              <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+                {isResolving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Radio className="w-3 h-3" />}
+                <span>{isResolving ? 'Loading…' : 'Tap to stream'}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className={`truncate text-[15px] font-bold leading-tight ${active ? 'text-primary' : 'text-foreground'}`}>
-          {track.title}
-        </p>
-        <p className="mt-0.5 truncate text-[12px] text-muted-foreground font-medium">{track.artist}</p>
-      </div>
-      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center mr-1">
-        {resolving ? (
-          <Loader2 className="w-4 h-4 text-primary animate-spin" />
-        ) : active && playing ? (
-          <Pause className="w-4 h-4 text-primary" fill="currentColor" />
-        ) : (
-          <Play className="w-4 h-4 text-primary ml-0.5" fill="currentColor" />
-        )}
-      </div>
-    </button>
+    </section>
   );
 };
 

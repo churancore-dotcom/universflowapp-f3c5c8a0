@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search as SearchIcon, Music, X, Globe, Radio, Loader2, Clock, Trash2 } from 'lucide-react';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
@@ -19,21 +18,14 @@ import {
   type SongHistoryEntry,
 } from '@/lib/songHistory';
 
-type SearchSource = 'originals' | 'all';
-
-// Patterns that mark a track as a spammy non-original (karaoke / sped-up TikTok edits / 8D / covers / lyrics videos).
-const SPAM_PATTERN = /\b(karaoke|nightcore|sped[\s-]?up|slowed|reverb|8d\s*audio|cover\s+by|cover\s+version|tribute|guitar\s+cover|piano\s+cover|instrumental|backing\s+track|made\s+famous|in\s+the\s+style\s+of|tutorial|lesson|reaction|lyrics?\s+video|with\s+lyrics|remix\s+by\s+dj)\b/i;
-
-const isOriginalTrack = (t: { title: string; artist: string }) =>
-  !SPAM_PATTERN.test(t.title || '') && !SPAM_PATTERN.test(t.artist || '');
+type SearchSource = 'all' | 'indexer';
 
 const Search = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState(() => searchParams.get('q') || '');
+  const [query, setQuery] = useState('');
   const [indexedResults, setIndexedResults] = useState<IndexedTrack[]>([]);
   const [searching, setSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [source, setSource] = useState<SearchSource>('originals');
+  const [source, setSource] = useState<SearchSource>('all');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<SongHistoryEntry[]>(() => getSongHistory().filter(entry => !isCatalogSongId(entry.id)));
   const { playSong, currentSong, isPlaying } = usePlayer();
@@ -44,13 +36,6 @@ const Search = () => {
     if (currentSong) setSearchHistory(getSongHistory().filter(entry => !isCatalogSongId(entry.id)));
   }, [currentSong?.id]);
 
-  // Sync incoming ?q= deep links (e.g. from Home mood chips)
-  useEffect(() => {
-    const incoming = searchParams.get('q') || '';
-    if (incoming && incoming !== query) setQuery(incoming);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
   useEffect(() => {
     const trimmedQuery = query.trim();
 
@@ -60,19 +45,11 @@ const Search = () => {
       return;
     }
 
-    // YouTube-like behavior: strip generic filler words so "chill songs" → "chill".
-    const FILLER = /\b(songs?|musics?|tracks?|audios?|tunes?|playlists?|albums?|official|video|hd|hq|lyrics?|mix|the\s+best|best\s+of|top|new|latest)\b/gi;
-    const cleaned = trimmedQuery.replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
-
     let cancelled = false;
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        let indexedResponse = await searchIndexedTracks(trimmedQuery, 50);
-        // Retry with cleaned query if the original returned nothing.
-        if (indexedResponse.length === 0 && cleaned && cleaned !== trimmedQuery) {
-          indexedResponse = await searchIndexedTracks(cleaned, 50);
-        }
+        const indexedResponse = await searchIndexedTracks(trimmedQuery, 50);
         if (cancelled) return;
         setIndexedResults(indexedResponse);
         setSearchHistory(getSongHistory().filter(entry => !isCatalogSongId(entry.id)));
@@ -97,9 +74,7 @@ const Search = () => {
 
   const libraryResults: Song[] = [];
 
-  const visibleIndexedResults = source === 'originals'
-    ? indexedResults.filter(isOriginalTrack)
-    : indexedResults;
+  const visibleIndexedResults = source === 'all' || source === 'indexer' ? indexedResults : [];
 
   const handlePlayIndexed = useCallback((track: IndexedTrack) => {
     const song: Song = {
@@ -172,8 +147,8 @@ const Search = () => {
           {hasQuery && (
             <div className="flex gap-2 mt-2.5 overflow-x-auto hide-scrollbar">
               {([
-                { key: 'originals' as SearchSource, label: 'Originals', icon: Radio },
-                { key: 'all' as SearchSource, label: 'All Results', icon: Globe },
+                { key: 'all' as SearchSource, label: 'All Songs', icon: Globe },
+                { key: 'indexer' as SearchSource, label: 'Worldwide', icon: Radio },
               ]).map(tab => (
                 <motion.button key={tab.key} onClick={() => setSource(tab.key)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0"
@@ -184,6 +159,9 @@ const Search = () => {
                   }} whileTap={{ scale: 0.95 }}>
                   <tab.icon className="w-3 h-3" />
                   {tab.label}
+                  {tab.key === 'indexer' && indexedResults.length > 0 && (
+                    <span className="ml-0.5 text-[10px] opacity-60">{indexedResults.length}</span>
+                  )}
                 </motion.button>
               ))}
             </div>

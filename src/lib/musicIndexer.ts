@@ -149,45 +149,9 @@ export async function searchIndexedTracks(query: string, limit = 50): Promise<In
 // the user navigates back to Home. Survives across mounts during the session;
 // localStorage layer survives across reloads (TTL 30 minutes).
 const TOP_TRACKS_TTL = 30 * 60 * 1000;
-const TOP_TRACKS_LS_KEY = 'uf_top_tracks_v2';
-const topTracksMemCache = new Map<string, { data: IndexedTrack[]; expiresAt: number }>();
-let topTracksInflight = new Map<string, Promise<IndexedTrack[]>>();
-
-// Detect a 2-letter country code using browser language + timezone heuristics.
-// Cached after first compute. Falls back to '' (server uses global blend).
-let _detectedCountry: string | null = null;
-export function detectCountry(): string {
-  if (_detectedCountry !== null) return _detectedCountry;
-  let cc = '';
-  try {
-    // 1) Locale region (e.g. en-IN → IN)
-    const langs = [navigator.language, ...(navigator.languages || [])];
-    for (const lang of langs) {
-      const m = /-([A-Z]{2})\b/i.exec(lang || '');
-      if (m) { cc = m[1].toUpperCase(); break; }
-    }
-    // 2) Timezone heuristic
-    if (!cc) {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const TZ_MAP: Record<string, string> = {
-        'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN',
-        'Asia/Karachi': 'PK', 'Asia/Dhaka': 'BD',
-        'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR',
-        'Asia/Shanghai': 'CN', 'Asia/Singapore': 'SG',
-        'Asia/Dubai': 'AE', 'Asia/Riyadh': 'SA',
-        'Europe/London': 'GB', 'Europe/Paris': 'FR',
-        'Europe/Berlin': 'DE', 'Europe/Madrid': 'ES',
-        'Europe/Moscow': 'RU',
-        'America/New_York': 'US', 'America/Los_Angeles': 'US', 'America/Chicago': 'US',
-        'America/Toronto': 'CA', 'America/Mexico_City': 'MX', 'America/Sao_Paulo': 'BR',
-        'Australia/Sydney': 'AU',
-      };
-      cc = TZ_MAP[tz] || '';
-    }
-  } catch { /* ignore */ }
-  _detectedCountry = cc;
-  return cc;
-}
+const TOP_TRACKS_LS_KEY = 'uf_top_tracks_v1';
+const topTracksMemCache = new Map<number, { data: IndexedTrack[]; expiresAt: number }>();
+let topTracksInflight = new Map<number, Promise<IndexedTrack[]>>();
 
 (function hydrateTopTracksCache() {
   try {
@@ -197,7 +161,7 @@ export function detectCountry(): string {
     const now = Date.now();
     Object.entries(parsed).forEach(([k, v]) => {
       if (v?.expiresAt > now && Array.isArray(v.data)) {
-        topTracksMemCache.set(k, v);
+        topTracksMemCache.set(Number(k), v);
       }
     });
   } catch { /* ignore */ }
@@ -206,40 +170,36 @@ export function detectCountry(): string {
 function persistTopTracksCache() {
   try {
     const obj: Record<string, { data: IndexedTrack[]; expiresAt: number }> = {};
-    topTracksMemCache.forEach((v, k) => { obj[k] = v; });
+    topTracksMemCache.forEach((v, k) => { obj[String(k)] = v; });
     localStorage.setItem(TOP_TRACKS_LS_KEY, JSON.stringify(obj));
   } catch { /* ignore quota */ }
 }
 
-export async function getTopIndexedTracks(limit = 30, country?: string): Promise<IndexedTrack[]> {
-  // Pass empty country by default → edge function detects from request IP (respects VPNs).
-  const cc = (country ?? '').toUpperCase().slice(0, 2);
-  const key = `${limit}::${cc || 'auto'}`;
-  const cached = topTracksMemCache.get(key);
+export async function getTopIndexedTracks(limit = 30): Promise<IndexedTrack[]> {
+  const cached = topTracksMemCache.get(limit);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.data;
   }
-  const inflight = topTracksInflight.get(key);
+  const inflight = topTracksInflight.get(limit);
   if (inflight) return inflight;
 
   const promise = (async () => {
     const data = await requestIndexer<IndexedTracksResponse>({
       action: 'top',
       limit,
-      country: cc || undefined,
     });
     const results = Array.isArray(data.results) ? data.results : [];
     if (results.length > 0) {
-      topTracksMemCache.set(key, { data: results, expiresAt: Date.now() + TOP_TRACKS_TTL });
+      topTracksMemCache.set(limit, { data: results, expiresAt: Date.now() + TOP_TRACKS_TTL });
       persistTopTracksCache();
     }
     return results;
   })();
-  topTracksInflight.set(key, promise);
+  topTracksInflight.set(limit, promise);
   try {
     return await promise;
   } finally {
-    topTracksInflight.delete(key);
+    topTracksInflight.delete(limit);
   }
 }
 
@@ -311,20 +271,6 @@ export function prefetchIndexedTrack(artist: string, title: string) {
   const cacheKey = makeCacheKey(artist, title);
   if (getCachedStream(cacheKey) || inFlightResolutions.has(cacheKey)) return;
   void resolveIndexedTrack(artist, title).catch(() => null);
-}
-
-/** Wipe a cached stream URL (used when a previously-resolved URL has expired). */
-export function invalidateStreamCache(artist: string, title: string) {
-  const key = makeCacheKey(artist, title);
-  streamCache.delete(key);
-  inFlightResolutions.delete(key);
-  persistCache();
-}
-
-/** Force a fresh edge-function resolve, bypassing all caches. */
-export async function forceResolveIndexedTrack(artist: string, title: string): Promise<ResolveTrackResponse> {
-  invalidateStreamCache(artist, title);
-  return resolveIndexedTrack(artist, title);
 }
 
 // ── Artist directory (with real PFPs from Deezer) ──

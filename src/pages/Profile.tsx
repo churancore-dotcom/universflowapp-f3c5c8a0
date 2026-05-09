@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Settings, LogOut, Shield, Music, Heart, Clock, ChevronRight, Crown, Star } from 'lucide-react';
+import { User, Mail, Settings, LogOut, Shield, Music, Heart, Clock, ChevronRight, Crown, Edit2, Check, X, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +9,12 @@ import RedeemCodeModal from '@/components/RedeemCodeModal';
 import ReviewModal from '@/components/ReviewModal';
 import ReviewsSheet from '@/components/ReviewsSheet';
 import { TabTransition } from '@/components/PageTransition';
-import { flagFor, nameFor } from '@/lib/countries';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 interface ProfileData {
   username: string | null;
-  country_code: string | null;
+  username_changed: boolean;
 }
 
 const Profile = () => {
@@ -24,7 +25,10 @@ const Profile = () => {
   const [showRedeemCode, setShowRedeemCode] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showReviewsList, setShowReviewsList] = useState(false);
-  const [profileData, setProfileData] = useState<ProfileData>({ username: null, country_code: null });
+  const [profileData, setProfileData] = useState<ProfileData>({ username: null, username_changed: false });
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -37,15 +41,16 @@ const Profile = () => {
     if (!user) return;
     const { data } = await supabase
       .from('profiles')
-      .select('username, country_code')
+      .select('username, username_changed')
       .eq('user_id', user.id)
       .single();
-
+    
     if (data) {
       setProfileData({
         username: data.username,
-        country_code: (data as any).country_code || null,
+        username_changed: (data as any).username_changed || false,
       });
+      setNewUsername(data.username || '');
     }
   };
 
@@ -63,12 +68,58 @@ const Profile = () => {
     });
   };
 
+  const handleSaveUsername = async () => {
+    if (!user || !newUsername.trim()) return;
+
+    if (newUsername.trim().length < 3) {
+      toast.error('Username must be at least 3 characters');
+      return;
+    }
+
+    if (newUsername.trim().length > 20) {
+      toast.error('Username must be less than 20 characters');
+      return;
+    }
+
+    if (profileData.username_changed) {
+      toast.error('You can only change your username once');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Set your username to "${newUsername.trim()}"?\n\nThis can only be done once and cannot be changed later.`
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: newUsername.trim(),
+          username_changed: true,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setProfileData(prev => ({ ...prev, username: newUsername.trim(), username_changed: true }));
+      setIsEditingUsername(false);
+      toast.success('Username set! This cannot be changed again.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update username');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigate('/auth');
   };
 
   const displayName = profileData.username || user?.email?.split('@')[0] || 'User';
+  const canChangeUsername = !profileData.username_changed;
 
   return (
     <TabTransition>
@@ -116,21 +167,61 @@ const Profile = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold truncate">{displayName}</h2>
-                  {isPremium && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#000' }}>
-                      PREMIUM
-                    </span>
+                  {isEditingUsername ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className="h-8 text-sm bg-white/10 border-white/20"
+                        placeholder="Enter username"
+                        maxLength={20}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSaveUsername}
+                        disabled={isSaving}
+                        className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center"
+                      >
+                        <Check className="w-4 h-4 text-green-400" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingUsername(false);
+                          setNewUsername(profileData.username || '');
+                        }}
+                        className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center"
+                      >
+                        <X className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-base font-bold truncate">{displayName}</h2>
+                      {canChangeUsername && (
+                        <button
+                          onClick={() => setIsEditingUsername(true)}
+                          className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"
+                        >
+                          <Edit2 className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      )}
+                      {isPremium && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#000' }}>
+                          PREMIUM
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
                   <Mail className="w-3 h-3" />
                   {user?.email}
                 </p>
-                {profileData.country_code && (
-                  <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1">
-                    <span>{flagFor(profileData.country_code)}</span>
-                    <span>{nameFor(profileData.country_code)}</span>
+                {!isEditingUsername && (
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    {profileData.username_changed
+                      ? 'Username is locked (can only be set once)'
+                      : 'Tap pencil to set your username (one-time only)'}
                   </p>
                 )}
                 {isAdmin && (
