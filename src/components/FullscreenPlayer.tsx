@@ -11,6 +11,8 @@ import SocialShareModal from './SocialShareModal';
 import AddToPlaylistModal from './AddToPlaylistModal';
 import CreatePlaylistModal from './CreatePlaylistModal';
 import EqualizerModal from './EqualizerModal';
+import FollowArtistButton from './FollowArtistButton';
+import FollowedArtistsRail from './FollowedArtistsRail';
 import { supabase } from '@/integrations/supabase/client';
 import type { Song } from '@/contexts/PlayerContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
@@ -293,6 +295,12 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
                   </motion.div>
                 </AnimatePresence>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <FollowArtistButton
+                    artistName={currentSong.artist}
+                    artistImage={currentSong.cover_url}
+                    source={currentSong.artist_id ? 'catalog' : 'lastfm'}
+                    size="sm"
+                  />
                   <LikeButton songId={currentSong.id} song={currentSong} size="sm" />
                   <DownloadButton song={currentSong} size="sm" />
                 </div>
