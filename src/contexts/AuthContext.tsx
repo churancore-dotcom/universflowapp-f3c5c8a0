@@ -181,6 +181,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return { error: new Error(getAuthError(error)) };
       }
+
+      // Fire-and-forget welcome email via Resend (never block signup on this)
+      supabase.functions
+        .invoke('send-welcome-email', { body: { email, username: trimmedUsername } })
+        .catch((e) => console.warn('welcome email failed:', e));
+
       return { error: null };
     } catch (error) {
       return { error: new Error(getAuthError(error)) };
