@@ -157,8 +157,71 @@ const Auth = () => {
             </motion.p>
           </div>
 
-          {/* Form */}
+          {/* Form / Verify view */}
+          <AnimatePresence mode="wait">
+          {pendingEmail ? (
+            <motion.div
+              key="verify"
+              className="relative rounded-3xl p-6 text-center"
+              style={{
+                background: 'rgba(28, 28, 30, 0.75)',
+                border: '1px solid rgba(255, 255, 255, 0.10)',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+              }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div
+                className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(340 100% 50% / 0.2), hsl(260 100% 60% / 0.2))',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <MailCheck className="w-7 h-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">Verify your email</h2>
+              <p className="text-muted-foreground text-xs mt-1.5 leading-relaxed">
+                We sent a confirmation link to
+              </p>
+              <p className="text-foreground text-sm font-semibold mt-1 break-all">{pendingEmail}</p>
+              <p className="text-muted-foreground text-[11px] mt-3 leading-relaxed">
+                Tap the link in your inbox to activate your account. You won't be able to sign in until your email is verified.
+              </p>
+
+              <Button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="w-full h-11 text-sm font-semibold rounded-xl border-0 text-primary-foreground mt-5 active:scale-[0.97] transition-transform"
+                style={{
+                  background: 'linear-gradient(135deg, #FF2D55, #BF5AF2, #5E5CE6)',
+                  boxShadow: '0 4px 20px hsl(340 100% 50% / 0.25)',
+                }}
+              >
+                {resending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Resend verification email
+                  </span>
+                )}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => { setPendingEmail(null); setIsLogin(true); }}
+                className="mt-4 text-xs text-muted-foreground active:opacity-70"
+              >
+                Back to sign in
+              </button>
+            </motion.div>
+          ) : (
           <motion.form
+            key="form"
             onSubmit={handleSubmit}
             className="relative rounded-3xl p-6 space-y-5"
             style={{
@@ -268,6 +331,8 @@ const Auth = () => {
               </button>
             </p>
           </motion.form>
+          )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Footer */}
