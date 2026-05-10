@@ -40,6 +40,7 @@ const ReviewModal = ({ isOpen, onClose, onSubmitted }: Props) => {
 
   const handleSubmit = async () => {
     if (!user) return;
+    if (!requireVerified('post a review')) return;
     if (rating === 0) {
       toast.error('Please pick a star rating');
       return;
