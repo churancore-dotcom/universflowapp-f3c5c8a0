@@ -477,6 +477,7 @@ type Step = 'pay' | 'confirm' | 'verifying';
 const UpiCheckoutSheet = memo(function UpiCheckoutSheet({ settings, plan, onClose, onRedeem }: CheckoutProps) {
   const haptics = useHaptics();
   const { user } = useAuth();
+  const { requireVerified } = useEmailVerified();
   const { refetch: refetchPremium } = usePremium();
   const [step, setStep] = useState<Step>('pay');
   const [utr, setUtr] = useState('');
