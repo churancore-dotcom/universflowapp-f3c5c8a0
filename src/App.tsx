@@ -43,6 +43,7 @@ const PlayWithMate = lazy(() => import("./pages/PlayWithMate"));
 const AllArtists = lazy(() => import("./pages/AllArtists"));
 const ManageSubscription = lazy(() => import("./pages/ManageSubscription"));
 const Premium = lazy(() => import("./pages/Premium"));
+const Downloads = lazy(() => import("./pages/Downloads"));
 
 const DownloadQueuePanel = lazy(() => import("./components/DownloadQueuePanel"));
 const PrerollAd = lazy(() => import("./components/ads/PrerollAd"));
