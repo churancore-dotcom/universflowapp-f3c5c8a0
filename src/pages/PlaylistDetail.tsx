@@ -207,12 +207,50 @@ const PlaylistDetail = () => {
             <p className="font-semibold truncate">{playlist.title}</p>
           </div>
           {isOwner && (
-            <motion.button
-              className="p-2 rounded-full hover:bg-white/10 transition-colors"
-              whileTap={{ scale: 0.9 }}
-            >
-              <MoreHorizontal className="w-5 h-5" />
-            </motion.button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="More">
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    if (!playlist) return;
+                    const { data, error } = await supabase.rpc('get_or_create_playlist_share_token', { p_playlist_id: playlist.id });
+                    if (error || !data) {
+                      console.error('share token error', error);
+                      toast.error(error?.message || 'Could not create share link');
+                      return;
+                    }
+                    const url = `${window.location.origin}/p/${data}`;
+                    try {
+                      if (navigator.share) {
+                        await navigator.share({ title: playlist.title, text: `Listen to "${playlist.title}" on Universflow`, url });
+                      } else {
+                        await navigator.clipboard.writeText(url);
+                        toast.success('Share link copied');
+                      }
+                    } catch { /* cancelled */ }
+                  }}
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share playlist link
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    if (!playlist) return;
+                    const { data, error } = await supabase.rpc('get_or_create_playlist_share_token', { p_playlist_id: playlist.id });
+                    if (error || !data) { toast.error(error?.message || 'Could not create link'); return; }
+                    await navigator.clipboard.writeText(`${window.location.origin}/p/${data}`);
+                    toast.success('Link copied to clipboard');
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </motion.header>
 
