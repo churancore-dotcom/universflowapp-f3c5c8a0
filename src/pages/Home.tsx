@@ -26,6 +26,7 @@ import { triggerHaptic } from '@/hooks/useHaptics';
 import { usePremium } from '@/hooks/usePremium';
 import appLogo from '@/assets/app-logo.png';
 import { HomeSkeleton } from '@/components/PageSkeletons';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 
 
 // Simple empty state
