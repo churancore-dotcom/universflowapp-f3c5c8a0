@@ -78,6 +78,7 @@ const PromoCodes = lazy(() => import("./pages/admin/PromoCodes"));
 const PaymentRequests = lazy(() => import("./pages/admin/PaymentRequests"));
 const APIManagement = lazy(() => import("./pages/admin/APIManagement"));
 const PushNotifications = lazy(() => import("./pages/admin/PushNotifications"));
+const RegisteredDevices = lazy(() => import("./pages/admin/RegisteredDevices"));
 const UserEngagement = lazy(() => import("./pages/admin/UserEngagement"));
 const ABTesting = lazy(() => import("./pages/admin/ABTesting"));
 const SecurityCenter = lazy(() => import("./pages/admin/SecurityCenter"));
