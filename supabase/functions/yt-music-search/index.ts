@@ -14,6 +14,65 @@ interface SearchResult {
   audio_url: string;
   cover_url?: string;
   duration?: number;
+  published?: number;
+}
+
+const GENERIC_QUERY_WORDS = new Set([
+  'song', 'songs', 'music', 'track', 'tracks', 'latest', 'new', 'fresh', 'official', 'audio', 'video',
+  'hindi', 'bollywood', 'punjabi', 'tamil', 'telugu', 'bhojpuri', 'marathi', 'bengali', 'gujarati', 'malayalam', 'kannada', 'urdu',
+  'sad', 'love', 'romantic', 'happy', 'party', 'dance', 'lofi', 'lo-fi', 'chill', 'workout', 'gym', 'rap', 'pop', 'rock'
+]);
+
+const SPAM_PATTERNS = [
+  /\b(top|best)\s*\d+\b/i,
+  /\b\d+\s*(top|best|hit|hits|songs)\b/i,
+  /\b(non\s*stop|jukebox|mashup|medley|playlist|compilation|collection|mixtape|album full|full album|all songs)\b/i,
+  /\b(90'?s|80'?s|70'?s|evergreen|old is gold|purane|old songs?)\b/i,
+  /\b(sped up|slowed|reverb|nightcore|8d|karaoke|cover|remix|instrumental)\b/i,
+  /\b\d+\s*(hour|hours|hr|hrs|minute|minutes|min)\b/i,
+];
+
+const normalize = (value = '') => value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+function meaningfulTokens(query: string) {
+  return normalize(query)
+    .split(' ')
+    .filter((token) => token.length > 1 && !GENERIC_QUERY_WORDS.has(token));
+}
+
+function looksSpammy(item: any, query: string) {
+  const rawTitle = String(item?.title || '');
+  const rawAuthor = String(item?.author || '');
+  const haystack = `${rawTitle} ${rawAuthor}`;
+  const q = normalize(query);
+  const duration = Number(item?.lengthSeconds || item?.duration || 0);
+
+  if (duration && (duration < 75 || duration > 540)) return true;
+  if (SPAM_PATTERNS.some((pattern) => pattern.test(haystack))) return true;
+  if (!q.includes('lofi') && /\b(lofi|lo-fi)\b/i.test(haystack)) return true;
+  return false;
+}
+
+function scoreResult(item: any, query: string, index: number) {
+  const title = normalize(String(item?.title || ''));
+  const author = normalize(String(item?.author || ''));
+  const haystack = `${title} ${author}`;
+  const q = normalize(query);
+  const tokens = meaningfulTokens(query);
+  const duration = Number(item?.lengthSeconds || item?.duration || 0);
+  const published = Number(item?.published || 0);
+  const ageDays = published > 0 ? Math.max(0, (Date.now() / 1000 - published) / 86400) : 9999;
+  let score = 100 - index;
+
+  if (q && haystack.includes(q)) score += 80;
+  score += tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 34 : -28), 0);
+  if (/\b(official audio|official video|music video)\b/i.test(String(item?.title || ''))) score += 32;
+  if (duration >= 120 && duration <= 360) score += 30;
+  if (ageDays <= 90) score += 55;
+  else if (ageDays <= 365) score += 30;
+  else score -= 80;
+  if (looksSpammy(item, query)) score -= 180;
+  return score;
 }
 
 function cleanTitle(raw: string) {
@@ -119,8 +178,12 @@ serve(async (req) => {
         if (!r.ok) continue;
         const items: any[] = await r.json();
         invResults = items
+          .map((item: any, index: number) => ({ item, score: scoreResult(item, cleanQuery, index) }))
+          .filter(({ item, score }: any) => item?.videoId && score > -20 && !looksSpammy(item, cleanQuery))
+          .sort((a: any, b: any) => b.score - a.score)
           .slice(0, limit)
           .map((item: any) => {
+            item = item.item;
             const videoId = item?.videoId;
             if (!videoId) return null;
             const parsed = cleanTitle(item.title || 'Unknown Title');
@@ -136,6 +199,7 @@ serve(async (req) => {
               audio_url: `yt-video:${videoId}`,
               cover_url,
               duration: item.lengthSeconds || undefined,
+              published: item.published || undefined,
             };
           })
           .filter(Boolean) as SearchResult[];
@@ -199,10 +263,17 @@ serve(async (req) => {
     }
 
     const results: SearchResult[] = (data.items || [])
-      .map((item: any) => {
+      .map((item: any, index: number) => {
         const videoId = item?.id?.videoId;
         if (!videoId) return null;
         const snippet = item.snippet || {};
+        const comparable = {
+          videoId,
+          title: snippet.title || '',
+          author: snippet.channelTitle || '',
+          published: snippet.publishedAt ? Math.floor(new Date(snippet.publishedAt).getTime() / 1000) : 0,
+        };
+        if (looksSpammy(comparable, cleanQuery) || scoreResult(comparable, cleanQuery, index) <= -20) return null;
         const parsed = cleanTitle(snippet.title || 'Unknown Title');
         return {
           id: `ytm-${videoId}`,
@@ -211,6 +282,7 @@ serve(async (req) => {
           artist: parsed.artist || snippet.channelTitle || 'Unknown Artist',
           audio_url: `yt-video:${videoId}`,
           cover_url: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
+          published: comparable.published || undefined,
         };
       })
       .filter(Boolean);

@@ -122,6 +122,7 @@ const PIPED_INSTANCES = [
 ];
 
 const INVIDIOUS_INSTANCES = [
+  'https://invidious-production-d29a.up.railway.app',
   'https://inv.nadeko.net',
   'https://invidious.private.coffee',
   'https://invidious.nerdvpn.de',
@@ -647,20 +648,44 @@ async function getTopTracks(limit = 30) {
 
 // ── Video search & scoring ──
 
+const BAD_VIDEO_PATTERNS = [
+  /\b(top|best)\s*\d+\b/i,
+  /\b\d+\s*(top|best|hit|hits|songs)\b/i,
+  /\b(non\s*stop|jukebox|mashup|medley|playlist|compilation|collection|mixtape|album full|full album|all songs)\b/i,
+  /\b(90'?s|80'?s|70'?s|evergreen|old is gold|purane|old songs?)\b/i,
+  /\b(sped up|slowed|reverb|nightcore|8d|karaoke|cover|remix|instrumental)\b/i,
+  /\b\d+\s*(hour|hours|hr|hrs|minute|minutes|min)\b/i,
+];
+
+function isBadVideoCandidate(item: Record<string, unknown>, artist: string, title: string) {
+  const raw = `${String(item.title || '')} ${String(item.author || item.uploaderName || item.uploader || '')}`;
+  const normalizedWanted = normalizeText(`${artist} ${title}`);
+  const normalizedRaw = normalizeText(raw);
+  const dur = Number(item.lengthSeconds || item.duration || 0);
+  if (dur && (dur < 75 || dur > 540)) return true;
+  if (BAD_VIDEO_PATTERNS.some((pattern) => pattern.test(raw))) return true;
+  if (!normalizedWanted.includes('lofi') && normalizedRaw.includes('lofi')) return true;
+  return false;
+}
+
 function scoreVideo(item: Record<string, unknown>, artist: string, title: string) {
   const iTitle = normalizeText(String(item.title || ''));
   const iArtist = normalizeText(String(item.author || item.uploaderName || item.uploader || ''));
   const wArtist = normalizeText(artist);
   const wTitle = normalizeText(title);
   const dur = Number(item.lengthSeconds || item.duration || 0);
+  const published = Number(item.published || 0);
+  const ageDays = published > 0 ? Math.max(0, (Date.now() / 1000 - published) / 86400) : 9999;
   let s = 0;
   if (wTitle && iTitle.includes(wTitle)) s += 12;
   if (wArtist && iTitle.includes(wArtist)) s += 4;
   if (wArtist && iArtist.includes(wArtist)) s += 8;
   s += wTitle.split(' ').filter(w => w.length > 2 && iTitle.includes(w)).length * 1.5;
-  ['karaoke','sped up','slowed','reverb','8d audio','nightcore','live','cover','remix','instrumental']
-    .forEach(t => { if (iTitle.includes(t) && !wTitle.includes(t)) s -= 5; });
-  if (dur >= 60 && dur <= 900) s += 2; else s -= 2;
+  ['karaoke','sped up','slowed','reverb','8d audio','nightcore','live','cover','remix','instrumental','jukebox','mashup','playlist','non stop']
+    .forEach(t => { if (iTitle.includes(t) && !wTitle.includes(t)) s -= 8; });
+  if (dur >= 120 && dur <= 360) s += 5; else if (dur >= 75 && dur <= 540) s += 1; else s -= 8;
+  if (ageDays <= 365) s += 3; else if (published > 0) s -= 6;
+  if (isBadVideoCandidate(item, artist, title)) s -= 20;
   return s;
 }
 
@@ -709,7 +734,7 @@ async function searchForCandidates(artist: string, title: string): Promise<Recor
     if (r.status === 'fulfilled' && Array.isArray(r.value)) {
       const ranked = r.value
         .map((item: any) => ({ item, score: scoreVideo({ title: item.title, author: item.uploaderName || item.uploader, lengthSeconds: item.duration || item.lengthSeconds }, artist, title) }))
-        .filter((e: any) => e.item.videoId)
+        .filter((e: any) => e.item.videoId && e.score > -8 && !isBadVideoCandidate({ title: e.item.title, author: e.item.uploaderName || e.item.uploader, lengthSeconds: e.item.duration || e.item.lengthSeconds }, artist, title))
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 4);
       ranked.forEach((e: any) => addCandidate(e.item));
@@ -727,11 +752,19 @@ async function searchForCandidates(artist: string, title: string): Promise<Recor
         const ytItems = Array.isArray(ytData?.items) ? ytData.items : [];
         for (const item of ytItems) {
           const vid = item?.id?.videoId;
-          if (vid) {
+          const candidate = {
+            videoId: vid,
+            title: item?.snippet?.title || '',
+            author: item?.snippet?.channelTitle || '',
+            published: item?.snippet?.publishedAt ? Math.floor(new Date(item.snippet.publishedAt).getTime() / 1000) : 0,
+            _source: 'youtube-api',
+          };
+          if (vid && scoreVideo(candidate, artist, title) > -8 && !isBadVideoCandidate(candidate, artist, title)) {
             addCandidate({
               videoId: vid,
               title: item?.snippet?.title || '',
               author: item?.snippet?.channelTitle || '',
+              published: item?.snippet?.publishedAt ? Math.floor(new Date(item.snippet.publishedAt).getTime() / 1000) : 0,
               _source: 'youtube-api',
             });
           }
@@ -761,7 +794,7 @@ async function searchForCandidates(artist: string, title: string): Promise<Recor
     if (r.status === 'fulfilled' && Array.isArray(r.value)) {
       const ranked = r.value
         .map((item: any) => ({ item, score: scoreVideo(item, artist, title) }))
-        .filter((e: any) => e.item.videoId)
+        .filter((e: any) => e.item.videoId && e.score > -8 && !isBadVideoCandidate(e.item, artist, title))
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 4);
       ranked.forEach((e: any) => addCandidate(e.item));
