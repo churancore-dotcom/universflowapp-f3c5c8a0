@@ -13,8 +13,6 @@ import AddToPlaylistModal from './AddToPlaylistModal';
 import CreatePlaylistModal from './CreatePlaylistModal';
 import EqualizerModal from './EqualizerModal';
 import FollowArtistButton from './FollowArtistButton';
-import FollowedArtistsRail from './FollowedArtistsRail';
-import { supabase } from '@/integrations/supabase/client';
 import type { Song } from '@/contexts/PlayerContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { canDownloadSong, canLikeSong, isIndexedSong } from '@/lib/songSupport';
@@ -95,57 +93,30 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
     if (!currentSong) return [];
     const currentMood = currentSong.mood?.toLowerCase().trim();
     const currentGenre = currentSong.genre?.toLowerCase().trim();
+    const currentArtist = currentSong.artist.toLowerCase().trim();
+    const currentAlbum = currentSong.album?.toLowerCase().trim();
+    const currentTitleWords = currentSong.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter((word) => word.length > 3);
     return queue
-      .filter((song) => song.id !== currentSong.id)
+      .filter((song) => song.id !== currentSong.id && !song.id.startsWith('mock-'))
       .map((song) => {
-        const moodMatch = currentMood && song.mood?.toLowerCase().trim() === currentMood ? 4 : 0;
-        const genreMatch = currentGenre && song.genre?.toLowerCase().trim() === currentGenre ? 2 : 0;
-        const differentArtist = song.artist.toLowerCase() !== currentSong.artist.toLowerCase() ? 1 : 0;
-        return { song, score: moodMatch + genreMatch + differentArtist };
+        const songMood = song.mood?.toLowerCase().trim();
+        const songGenre = song.genre?.toLowerCase().trim();
+        const songArtist = song.artist.toLowerCase().trim();
+        const songAlbum = song.album?.toLowerCase().trim();
+        const titleHaystack = `${song.title} ${song.album || ''}`.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+        const moodMatch = currentMood && songMood === currentMood ? 5 : 0;
+        const genreMatch = currentGenre && songGenre === currentGenre ? 4 : 0;
+        const artistMatch = currentArtist && songArtist === currentArtist ? 4 : 0;
+        const albumMatch = currentAlbum && songAlbum === currentAlbum ? 3 : 0;
+        const titleOverlap = currentTitleWords.filter((word) => titleHaystack.includes(word)).length;
+        return { song, score: moodMatch + genreMatch + artistMatch + albumMatch + titleOverlap };
       })
-      .filter((item) => item.score > 0)
+      .filter((item) => item.score >= 4)
       .sort((a, b) => b.score - a.score)
       .slice(0, 8)
       .map((item) => item.song);
   }, [currentSong, queue]);
-
-  // Fallback: when too few in-queue vibe matches, fill from catalog (trending + new uploads).
-  const MIN_VIBES = 4;
-  const [fallbackSuggestions, setFallbackSuggestions] = useState<Song[]>([]);
-  useEffect(() => {
-    if (!currentSong) { setFallbackSuggestions([]); return; }
-    if (vibeSuggestions.length >= MIN_VIBES) { setFallbackSuggestions([]); return; }
-    let cancelled = false;
-    (async () => {
-      const need = 8 - vibeSuggestions.length;
-      const { data } = await supabase
-        .from('songs')
-        .select('id,title,artist,album,genre,mood,duration,audio_url,cover_url,play_count,created_at')
-        .eq('is_visible', true)
-        .neq('id', currentSong.id)
-        .neq('artist', currentSong.artist)
-        .order('play_count', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(need * 3);
-      if (cancelled || !data) return;
-      const excluded = new Set<string>([currentSong.id, ...vibeSuggestions.map(s => s.id)]);
-      const picks: Song[] = [];
-      for (const row of data) {
-        if (excluded.has(row.id)) continue;
-        excluded.add(row.id);
-        picks.push(row as unknown as Song);
-        if (picks.length >= need) break;
-      }
-      setFallbackSuggestions(picks);
-    })();
-    return () => { cancelled = true; };
-  }, [currentSong?.id, vibeSuggestions.length]);
-
-  const combinedSuggestions = useMemo(
-    () => [...vibeSuggestions, ...fallbackSuggestions],
-    [vibeSuggestions, fallbackSuggestions]
-  );
-  const suggestionsLabel = vibeSuggestions.length >= MIN_VIBES ? 'Same Vibe' : 'You Might Also Like';
+  const suggestionsLabel = 'Same Vibe';
 
 
   useEffect(() => {
@@ -423,11 +394,11 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
               {/* Volume slider */}
               <VolumeSlider value={volume} onChange={setVolume} />
 
-              {combinedSuggestions.length > 0 && (
+              {vibeSuggestions.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40 px-1">{suggestionsLabel}</p>
                   <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 -mx-1 px-1">
-                    {combinedSuggestions.map((song) => (
+                    {vibeSuggestions.map((song) => (
                       <button
                         key={song.id}
                         type="button"
