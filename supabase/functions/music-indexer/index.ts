@@ -230,6 +230,25 @@ function normalizeText(v: string) {
   return v.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ')
     .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
+
+const SEARCH_GENERIC_WORDS = new Set(['song', 'songs', 'music', 'track', 'tracks', 'official', 'audio', 'video', 'latest', 'new', 'fresh', 'best', 'top']);
+function searchTokens(query: string) {
+  return normalizeText(query).split(' ').filter((word) => word.length > 1 && !SEARCH_GENERIC_WORDS.has(word));
+}
+
+function queryOverlap(query: string, track: IndexedTrack) {
+  const tokens = searchTokens(query);
+  if (tokens.length === 0) return 1;
+  const haystack = normalizeText(`${track.title} ${track.artist} ${track.album || ''}`);
+  const hits = tokens.filter((token) => haystack.includes(token)).length;
+  return hits / tokens.length;
+}
+
+function filterSearchMatches(query: string, tracks: IndexedTrack[]) {
+  const tokens = searchTokens(query);
+  if (tokens.length === 0) return tracks;
+  return tracks.filter((track) => queryOverlap(query, track) > 0).sort((a, b) => queryOverlap(query, b) - queryOverlap(query, a));
+}
 function makeTrackId(artist: string, title: string) {
   return `lfm-${normalizeText(artist).replace(/\s+/g, '-')}-${normalizeText(title).replace(/\s+/g, '-')}`;
 }
@@ -411,7 +430,7 @@ async function searchLastFm(query: string, limit = 24) {
     const mapped = mapTrack(t, info);
     return mapped ? hydrateTrackArtwork(mapped) : null;
   }));
-  const results = uniqueTracks(enriched);
+  const results = filterSearchMatches(query, uniqueTracks(enriched));
   setCached(ck, results, 5 * 60 * 1000);
   return results;
 }
