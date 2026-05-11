@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search as SearchIcon, Music, X, Globe, Radio, Loader2, Clock, Trash2 } from 'lucide-react';
+import { Search as SearchIcon, Music, X, Globe, Radio, Loader2, Clock, Trash2, EyeOff } from 'lucide-react';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
 import { useDownloads } from '@/contexts/DownloadContext';
 import BottomNav from '@/components/BottomNav';
@@ -14,7 +14,7 @@ import { prefetchIndexedTrack, searchIndexedTracks, getTagTopTracks, searchYouTu
 import { isCatalogSongId } from '@/lib/songSupport';
 import { detectMoodAndLanguage } from '@/lib/moodKeywords';
 import FollowedArtistsRail from '@/components/FollowedArtistsRail';
-import { getCached, setCached } from '@/lib/searchCache';
+import { clearCache, getCached, setCached } from '@/lib/searchCache';
 import {
   getSongHistory,
   removeSongFromHistory,
@@ -28,8 +28,56 @@ const normalizeText = (value = '') => value.toLowerCase().normalize('NFKD').repl
 const cleanIdentity = (value = '') => normalizeText(value).replace(/\b(official|lyrics?|video|audio|hd|4k|topic|vevo|records|music)\b/g, '').replace(/\s+/g, ' ').trim();
 const resultKey = (track: IndexedTrack) => `${cleanIdentity(track.artist)}::${cleanIdentity(track.title)}`;
 const queryTokens = (query: string) => normalizeText(query).split(' ').filter((token) => token.length > 1 && !['song', 'songs', 'music', 'track', 'tracks', 'best', 'top', 'latest', 'new'].includes(token));
+const HIDDEN_RESULTS_KEY = 'uf_hidden_search_results_v1';
+const SEARCH_CACHE_NAMESPACE = 'stable-search-v4';
 
-function rankAndDedupeResults(query: string, youtube: IndexedTrack[], literal: IndexedTrack[], tagSets: IndexedTrack[][]) {
+type HiddenSearchEntry = {
+  key: string;
+  id?: string;
+  videoId?: string;
+  title: string;
+  artist: string;
+  hiddenAt: number;
+};
+
+function loadHiddenResults(): HiddenSearchEntry[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HIDDEN_RESULTS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((entry) => typeof entry?.key === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHiddenResults(entries: HiddenSearchEntry[]) {
+  try {
+    localStorage.setItem(HIDDEN_RESULTS_KEY, JSON.stringify(entries.slice(0, 500)));
+  } catch { /* ignore quota */ }
+}
+
+function isHiddenTrack(track: IndexedTrack, hiddenEntries: HiddenSearchEntry[]) {
+  const key = resultKey(track);
+  const videoId = track.videoId || (track.id.startsWith('ytm-') ? track.id.slice(4) : undefined);
+  return hiddenEntries.some((entry) =>
+    entry.key === key ||
+    (videoId && entry.videoId === videoId) ||
+    (track.id && entry.id === track.id)
+  );
+}
+
+function hideSearchTrack(track: IndexedTrack) {
+  const key = resultKey(track);
+  if (!key || key === '::') return;
+  const videoId = track.videoId || (track.id.startsWith('ytm-') ? track.id.slice(4) : undefined);
+  const existing = loadHiddenResults().filter((entry) => entry.key !== key && entry.id !== track.id && (!videoId || entry.videoId !== videoId));
+  saveHiddenResults([
+    { key, id: track.id, videoId, title: track.title, artist: track.artist, hiddenAt: Date.now() },
+    ...existing,
+  ]);
+  clearCache(SEARCH_CACHE_NAMESPACE);
+}
+
+function rankAndDedupeResults(query: string, youtube: IndexedTrack[], literal: IndexedTrack[], tagSets: IndexedTrack[][], allowDiscoveryFallback = false) {
   const tokens = queryTokens(query);
   const rows = new Map<string, { track: IndexedTrack; score: number; firstSeen: number; sourcePriority: number }>();
   let firstSeen = 0;
@@ -41,17 +89,23 @@ function rankAndDedupeResults(query: string, youtube: IndexedTrack[], literal: I
     const tokenHits = tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 1 : 0), 0);
     const allTokens = tokens.length > 0 && tokenHits === tokens.length;
     const phraseHit = normalizeText(query).length > 2 && haystack.includes(normalizeText(query));
+    if (!allowDiscoveryFallback && tokens.length > 0 && tokenHits === 0 && !phraseHit) return;
     const popularity = Math.min(40, Math.log10(Math.max(1, track.listeners || 0)) * 8);
-    const score = base + (phraseHit ? 180 : 0) + (allTokens ? 120 : 0) + tokenHits * 26 + popularity - index * 0.5;
+    const title = normalizeText(track.title || '');
+    const artist = normalizeText(track.artist || '');
+    const exactArtist = tokens.length > 0 && tokens.every((token) => artist.includes(token));
+    const exactTitle = normalizeText(query).length > 2 && title.includes(normalizeText(query));
+    const relevance = (exactArtist ? 520 : 0) + (exactTitle ? 180 : 0) + (phraseHit ? 150 : 0) + (allTokens ? 140 : 0) + tokenHits * 34;
+    const score = base + relevance + popularity - index * 0.6;
     const existing = rows.get(key);
     if (!existing || score > existing.score || (score === existing.score && sourcePriority > existing.sourcePriority)) {
       rows.set(key, { track, score, firstSeen: existing?.firstSeen ?? firstSeen++, sourcePriority });
     }
   };
 
-  youtube.forEach((track, index) => add(track, 700, index, 3));
-  literal.forEach((track, index) => add(track, 360, index, 2));
-  tagSets.forEach((set, setIndex) => set.forEach((track, index) => add(track, 260 + setIndex * 40, index, 1)));
+  youtube.forEach((track, index) => add(track, 360, index, 3));
+  literal.forEach((track, index) => add(track, 520, index, 2));
+  tagSets.forEach((set, setIndex) => set.forEach((track, index) => add(track, 220 + setIndex * 40, index, 1)));
 
   return Array.from(rows.values())
     .sort((a, b) => b.score - a.score || b.sourcePriority - a.sourcePriority || a.firstSeen - b.firstSeen || a.track.title.localeCompare(b.track.title) || a.track.artist.localeCompare(b.track.artist))
@@ -66,6 +120,7 @@ const Search = () => {
   const [source, setSource] = useState<SearchSource>('all');
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<SongHistoryEntry[]>(() => getSongHistory());
+  const [hiddenResults, setHiddenResults] = useState<HiddenSearchEntry[]>(() => loadHiddenResults());
   const { playSong, currentSong, isPlaying } = usePlayer();
   const { getDownloadedUrl } = useDownloads();
 
@@ -87,9 +142,9 @@ const Search = () => {
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const cached = getCached<IndexedTrack[]>('stable-search-v2', trimmedQuery);
+        const cached = getCached<IndexedTrack[]>(SEARCH_CACHE_NAMESPACE, trimmedQuery);
         if (cached) {
-          if (!cancelled) setIndexedResults(cached);
+          if (!cancelled) setIndexedResults(cached.filter((track) => !isHiddenTrack(track, hiddenResults)));
           return;
         }
         // YouTube-style: detect mood + language separately. e.g. "hindi sad
@@ -111,8 +166,10 @@ const Search = () => {
         const [youtube, literal, ...tagSets] = await Promise.all([youtubeJob, literalJob, ...tagJobs]);
         if (cancelled) return;
 
-        const merged = rankAndDedupeResults(trimmedQuery, youtube, literal, tagSets).slice(0, 120);
-        setCached('stable-search-v2', trimmedQuery, merged);
+        const merged = rankAndDedupeResults(trimmedQuery, youtube, literal, tagSets, pureBrowse)
+          .filter((track) => !isHiddenTrack(track, hiddenResults))
+          .slice(0, 120);
+        setCached(SEARCH_CACHE_NAMESPACE, trimmedQuery, merged);
 
         setIndexedResults(merged);
         setSearchHistory(getSongHistory());
@@ -127,7 +184,7 @@ const Search = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, hiddenResults]);
 
   useEffect(() => {
     indexedResults.slice(0, 6).forEach((track) => {
@@ -138,6 +195,13 @@ const Search = () => {
   const libraryResults: Song[] = [];
 
   const visibleIndexedResults = source === 'all' || source === 'indexer' ? indexedResults : [];
+
+  const handleHideIndexed = useCallback((track: IndexedTrack) => {
+    hideSearchTrack(track);
+    const nextHidden = loadHiddenResults();
+    setHiddenResults(nextHidden);
+    setIndexedResults((results) => results.filter((item) => !isHiddenTrack(item, nextHidden)));
+  }, []);
 
   const handlePlayIndexed = useCallback((track: IndexedTrack) => {
     const song: Song = {
@@ -369,6 +433,18 @@ const Search = () => {
                               {isResolving ? 'Starting song...' : track.title}
                             </p>
                             <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">{track.artist}</p>
+                            {!isResolving && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleHideIndexed(track);
+                                }}
+                                className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground/70 active:text-primary"
+                              >
+                                <EyeOff className="w-3 h-3" /> Don’t show again
+                              </button>
+                            )}
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {isActive && isPlaying ? (

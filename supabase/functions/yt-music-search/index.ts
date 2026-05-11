@@ -40,6 +40,14 @@ function meaningfulTokens(query: string) {
     .filter((token) => token.length > 1 && !GENERIC_QUERY_WORDS.has(token));
 }
 
+function queryMatchesResult(item: any, query: string) {
+  const tokens = meaningfulTokens(query);
+  if (tokens.length === 0) return true;
+  const haystack = normalize(`${String(item?.title || '')} ${String(item?.author || item?.channelTitle || '')}`);
+  const hits = tokens.filter((token) => haystack.includes(token)).length;
+  return hits > 0 && (tokens.length < 2 || hits / tokens.length >= 0.5);
+}
+
 function looksSpammy(item: any, query: string) {
   const rawTitle = String(item?.title || '');
   const rawAuthor = String(item?.author || '');
@@ -63,6 +71,8 @@ function scoreResult(item: any, query: string, index: number) {
   const published = Number(item?.published || 0);
   const ageDays = published > 0 ? Math.max(0, (Date.now() / 1000 - published) / 86400) : 9999;
   let score = 100 - index;
+
+    if (!queryMatchesResult(item, query)) return -999;
 
   if (q && haystack.includes(q)) score += 80;
   score += tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 34 : -28), 0);
@@ -164,13 +174,15 @@ serve(async (req) => {
     }
 
     let invResults: SearchResult[] = [];
-    for (const inst of INVIDIOUS_INSTANCES) {
-      try {
-        const u = new URL(`${inst}/api/v1/search`);
-        u.searchParams.set('q', `${cleanQuery} music`);
-        u.searchParams.set('type', 'video');
-        u.searchParams.set('sort_by', sortBy);
-        u.searchParams.set('date', 'year'); // last year only — keeps results fresh
+    const dateWindows = ['year', '']; // fresh first, then all-time for artists with older catalogs
+    for (const dateWindow of dateWindows) {
+      for (const inst of INVIDIOUS_INSTANCES) {
+        try {
+          const u = new URL(`${inst}/api/v1/search`);
+          u.searchParams.set('q', `${cleanQuery} music`);
+          u.searchParams.set('type', 'video');
+          u.searchParams.set('sort_by', sortBy);
+          if (dateWindow) u.searchParams.set('date', dateWindow);
         const ctrl = new AbortController();
         const tm = setTimeout(() => ctrl.abort(), 6000);
         const r = await fetch(u.toString(), { headers: { Accept: 'application/json' }, signal: ctrl.signal });
@@ -203,13 +215,15 @@ serve(async (req) => {
             };
           })
           .filter(Boolean) as SearchResult[];
-        if (invResults.length > 0) {
-          console.log(`Invidious search OK via ${inst}: ${invResults.length} results`);
-          break;
+          if (invResults.length > 0) {
+            console.log(`Invidious search OK via ${inst} (${dateWindow || 'all-time'}): ${invResults.length} results`);
+            break;
+          }
+        } catch (e) {
+          console.warn(`Invidious search failed on ${inst}:`, (e as Error).message);
         }
-      } catch (e) {
-        console.warn(`Invidious search failed on ${inst}:`, (e as Error).message);
       }
+      if (invResults.length > 0) break;
     }
 
     if (invResults.length > 0) {
@@ -234,24 +248,33 @@ serve(async (req) => {
 
     let data: any = null;
     let lastErr = '';
-    for (const apiKey of apiKeys) {
-      const url = new URL('https://www.googleapis.com/youtube/v3/search');
-      url.searchParams.set('part', 'snippet');
-      url.searchParams.set('q', `${cleanQuery} music`);
-      url.searchParams.set('type', 'video');
-      url.searchParams.set('videoCategoryId', '10');
-      url.searchParams.set('maxResults', String(limit));
-      url.searchParams.set('order', sortBy === 'upload_date' ? 'date' : 'relevance');
-      url.searchParams.set('publishedAfter', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());
-      url.searchParams.set('key', apiKey);
+    for (const freshOnly of [true, false]) {
+      for (const apiKey of apiKeys) {
+        const url = new URL('https://www.googleapis.com/youtube/v3/search');
+        url.searchParams.set('part', 'snippet');
+        url.searchParams.set('q', `${cleanQuery} music`);
+        url.searchParams.set('type', 'video');
+        url.searchParams.set('videoCategoryId', '10');
+        url.searchParams.set('maxResults', String(limit));
+        url.searchParams.set('order', sortBy === 'upload_date' ? 'date' : 'relevance');
+        if (freshOnly) url.searchParams.set('publishedAfter', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());
+        url.searchParams.set('key', apiKey);
 
-      const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
-      if (response.ok) {
-        data = await response.json();
-        break;
+        const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+        if (response.ok) {
+          const candidateData = await response.json();
+          const hasMatch = (candidateData.items || []).some((item: any) => queryMatchesResult({ title: item?.snippet?.title, author: item?.snippet?.channelTitle }, cleanQuery));
+          if (hasMatch || !freshOnly) {
+            data = candidateData;
+            break;
+          }
+          lastErr = 'No matching fresh videos';
+          continue;
+        }
+        lastErr = await response.text().catch(() => 'No matching videos');
+        console.warn(`YouTube key/search window failed (${response.status}), trying next...`, lastErr.slice(0, 200));
       }
-      lastErr = await response.text();
-      console.warn(`YouTube key failed (${response.status}), trying next...`, lastErr.slice(0, 200));
+      if (data) break;
     }
 
     if (!data) {
