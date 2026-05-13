@@ -17,6 +17,26 @@ interface SearchResult {
   published?: number;
 }
 
+async function persistSearchResults(adminClient: any, results: SearchResult[]) {
+  if (!results.length) return;
+  const now = new Date().toISOString();
+  const rows = results.map((track) => ({
+    track_id: track.id,
+    source: 'indexed',
+    title: track.title,
+    artist: track.artist,
+    cover_url: track.cover_url ?? null,
+    audio_url: track.audio_url || `yt-video:${track.videoId}`,
+    duration: track.duration ?? null,
+    metadata: { provider: 'youtube', videoId: track.videoId },
+    last_seen_at: now,
+    updated_at: now,
+  }));
+
+  const { error } = await adminClient.from('stream_songs').upsert(rows, { onConflict: 'track_id' });
+  if (error) console.warn('Unable to cache search results:', error.message);
+}
+
 const GENERIC_QUERY_WORDS = new Set([
   'song', 'songs', 'music', 'track', 'tracks', 'latest', 'new', 'fresh', 'official', 'audio', 'video',
   'hindi', 'bollywood', 'punjabi', 'tamil', 'telugu', 'bhojpuri', 'marathi', 'bengali', 'gujarati', 'malayalam', 'kannada', 'urdu',
