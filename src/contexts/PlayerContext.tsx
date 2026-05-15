@@ -1265,6 +1265,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [teardownYouTubePlayback]);
 
   const nextSong = useCallback(() => {
+    // Free-tier skip cap (Spotify-style): 6/hour, unlimited on Premium
+    const { allowed, remaining } = recordSkipAndCheck();
+    if (!allowed) {
+      toast.error('Skip limit reached', {
+        description: 'Upgrade to Premium for unlimited skips.',
+        action: {
+          label: 'Upgrade',
+          onClick: () => { window.location.href = '/premium'; },
+        },
+      });
+      return;
+    }
+    if (Number.isFinite(remaining) && remaining <= 2) {
+      toast.message(`${remaining} skip${remaining === 1 ? '' : 's'} left this hour`, {
+        description: 'Premium = unlimited skips',
+      });
+    }
+
     if (queue.length === 0) return;
 
     // Cancel crossfade
