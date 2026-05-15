@@ -23,6 +23,7 @@ import { iosSpring, iosBounce } from '@/lib/animations';
 import { toast } from 'sonner';
 import { hydratePlaylistCoverUrls, loadPlaylistSongs } from '@/lib/streamSongs';
 import PlaylistCover from '@/components/PlaylistCover';
+import SEOHead from '@/components/SEOHead';
 
 interface Playlist {
   id: string;
@@ -186,6 +187,13 @@ const PlaylistDetail = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+        <SEOHead
+          title={`${playlist.title} — Playlist on Univers Flow`}
+          description={playlist.description?.slice(0, 155) || `Listen to "${playlist.title}" — a ${songs.length}-song playlist on Univers Flow.`}
+          image={playlist.cover_url || undefined}
+          path={`/playlist/${playlist.id}`}
+          type="music.playlist"
+        />
         {/* Header with back button */}
         <motion.header
           className="sticky top-0 z-30 px-4 py-3 safe-area-pt flex items-center gap-3"

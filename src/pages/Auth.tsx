@@ -82,6 +82,11 @@ const Auth = () => {
   return (
     <FadeTransition>
       <div className="h-[100dvh] bg-background flex flex-col items-center justify-center p-5 relative overflow-hidden">
+        <SEOHead
+          title="Sign in — Univers Flow Premium Music Experience"
+          description="Sign in or create your free Univers Flow account to stream music, build playlists, and listen offline."
+          path="/auth"
+        />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
