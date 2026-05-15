@@ -446,6 +446,8 @@ public class MediaNotificationService extends Service {
 
     @Override
     public void onDestroy() {
+        unregisterNoisyReceiver();
+        abandonAudioFocus();
         releaseWakeLock();
         stopForegroundCompat();
         super.onDestroy();
