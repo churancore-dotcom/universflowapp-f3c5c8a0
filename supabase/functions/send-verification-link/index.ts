@@ -185,18 +185,15 @@ Deno.serve(async (req) => {
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
       console.error('Resend failed', r.status, data);
-      return new Response(JSON.stringify({ error: data?.message || 'Email send failed' }), {
-        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // Don't leak failure status — return uniform success.
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return UNIFORM_OK;
   } catch (err) {
     console.error('send-verification-link error', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Uniform response on errors too.
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
