@@ -254,7 +254,7 @@ const PlaylistDetail = () => {
                     if (!playlist) return;
                     const { data, error } = await supabase.rpc('get_or_create_playlist_share_token', { p_playlist_id: playlist.id });
                     if (error || !data) { toast.error(error?.message || 'Could not create link'); return; }
-                    await navigator.clipboard.writeText(`${window.location.origin}/p/${data}`);
+                    await navigator.clipboard.writeText(publicUrl(`/p/${data}`));
                     toast.success('Link copied to clipboard');
                   }}
                 >
