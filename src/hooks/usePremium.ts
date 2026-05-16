@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthContext } from '@/contexts/AuthContext';
+import { setRuntimePremium } from '@/lib/premiumState';
 
 export type SubscriptionType = 'free' | 'premium_monthly' | 'premium_yearly';
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'pending';
@@ -114,6 +115,14 @@ export const usePremium = (): UsePremiumReturn => {
     subscription?.status === 'active' &&
     subscription?.subscription_type !== 'free' &&
     (!subscription?.expires_at || new Date(subscription.expires_at) > new Date());
+
+  // Mirror the server-verified value into a runtime flag that other modules
+  // (PlayerContext, useGlobalAudioEngine) read instead of localStorage —
+  // localStorage can be edited from DevTools, this in-memory flag cannot
+  // be flipped without also patching the JS bundle.
+  useEffect(() => {
+    setRuntimePremium(!!isPremium);
+  }, [isPremium]);
 
   return {
     isPremium,

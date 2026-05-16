@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveIndexedTrack, prefetchIndexedTrack, invalidateStreamCache } from '@/lib/musicIndexer';
 import { playerProgressStore, usePlayerProgress } from '@/lib/playerProgressStore';
 import { resume as resumeAudioEngine } from '@/lib/audioEngine';
+import { getRuntimePremium } from '@/lib/premiumState';
 import { toast } from 'sonner';
 
 interface YouTubePlayer {
@@ -145,43 +146,27 @@ const shouldProxyStreamUrl = (sourceUrl: string) => {
 };
 
 // ── Free-tier skip cap ──
-// Mirrors industry standard (Spotify free): 6 skips per rolling hour. Premium
-// is uncapped. We read the premium cache that usePremium writes so we don't
-// need to thread the hook into the player context.
-const SKIP_LOG_KEY = 'uf_skip_log_v1';
-const FREE_SKIPS_PER_HOUR = 6;
+// Enforced SERVER-SIDE via the `consume_free_skip` RPC, which uses
+// `api_rate_limits` and `is_premium_user(auth.uid())` so a tampered client
+// cannot bypass it. The local function only asks the server for a decision.
 
-const isPremiumFromCache = (): boolean => {
+const consumeServerSkip = async (): Promise<{ allowed: boolean; remaining: number | null; premium: boolean }> => {
   try {
-    const raw = localStorage.getItem('uf_premium_cache_v1');
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    const sub = parsed?.subscription;
-    if (!sub) return false;
-    if (sub.subscription_type === 'free') return false;
-    if (sub.status !== 'active') return false;
-    if (sub.expires_at && new Date(sub.expires_at) < new Date()) return false;
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const recordSkipAndCheck = (): { allowed: boolean; remaining: number } => {
-  if (isPremiumFromCache()) return { allowed: true, remaining: Infinity };
-  try {
-    const now = Date.now();
-    const raw = localStorage.getItem(SKIP_LOG_KEY);
-    const log: number[] = raw ? JSON.parse(raw) : [];
-    const recent = log.filter((t) => now - t < 60 * 60 * 1000);
-    if (recent.length >= FREE_SKIPS_PER_HOUR) {
-      return { allowed: false, remaining: 0 };
+    const { data, error } = await supabase.rpc('consume_free_skip');
+    if (error || !data) {
+      // Fail-open ONLY on a transient network error — never gives premium
+      // perks (server still decides next time). Lets free users skip if
+      // they're temporarily offline rather than freezing the player.
+      return { allowed: true, remaining: null, premium: false };
     }
-    recent.push(now);
-    localStorage.setItem(SKIP_LOG_KEY, JSON.stringify(recent));
-    return { allowed: true, remaining: FREE_SKIPS_PER_HOUR - recent.length };
+    const payload = data as { allowed?: boolean; remaining?: number | null; premium?: boolean };
+    return {
+      allowed: payload.allowed !== false,
+      remaining: payload.remaining ?? null,
+      premium: !!payload.premium,
+    };
   } catch {
-    return { allowed: true, remaining: FREE_SKIPS_PER_HOUR };
+    return { allowed: true, remaining: null, premium: false };
   }
 };
 
@@ -204,7 +189,8 @@ const buildStreamProxyUrl = (sourceUrl: string) => {
 
 const isEqProcessingEnabled = () => {
   try {
-    if (localStorage.getItem('uf_audio_fx_allowed') !== '1') return false;
+    // EQ DSP gating reads the server-verified runtime flag, not localStorage.
+    if (!getRuntimePremium()) return false;
     const raw = localStorage.getItem(EQ_SETTINGS_KEY);
     if (!raw) return false;
 
@@ -1264,9 +1250,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setExpanded(false);
   }, [teardownYouTubePlayback]);
 
-  const nextSong = useCallback(() => {
-    // Free-tier skip cap (Spotify-style): 6/hour, unlimited on Premium
-    const { allowed, remaining } = recordSkipAndCheck();
+  const nextSong = useCallback(async () => {
+    // Free-tier skip cap (Spotify-style): 6/hour, unlimited on Premium.
+    // Enforced server-side via the consume_free_skip RPC so a tampered
+    // client cannot bypass it.
+    const { allowed, remaining, premium } = await consumeServerSkip();
     if (!allowed) {
       toast.error('Skip limit reached', {
         description: 'Upgrade to Premium for unlimited skips.',
@@ -1277,7 +1265,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       return;
     }
-    if (Number.isFinite(remaining) && remaining <= 2) {
+    if (!premium && remaining !== null && remaining <= 2) {
       toast.message(`${remaining} skip${remaining === 1 ? '' : 's'} left this hour`, {
         description: 'Premium = unlimited skips',
       });
