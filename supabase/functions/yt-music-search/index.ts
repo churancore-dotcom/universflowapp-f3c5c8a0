@@ -60,7 +60,18 @@ function meaningfulTokens(query: string) {
     .filter((token) => token.length > 1 && !GENERIC_QUERY_WORDS.has(token));
 }
 
+// A query is "lyric-like" when the user typed a phrase (multiple words / long).
+// In that case we trust YouTube/Invidious ranking — they index captions &
+// descriptions, so the right video may not have the lyric in its title.
+function isLyricQuery(query: string) {
+  const raw = query.trim();
+  const wordCount = raw.split(/\s+/).filter(Boolean).length;
+  return wordCount >= 4 || raw.length >= 25;
+}
+
 function queryMatchesResult(item: any, query: string) {
+  // For lyric-style queries, don't gate on title overlap.
+  if (isLyricQuery(query)) return true;
   const tokens = meaningfulTokens(query);
   if (tokens.length === 0) return true;
   const haystack = normalize(`${String(item?.title || '')} ${String(item?.author || item?.channelTitle || '')}`);
@@ -90,20 +101,33 @@ function scoreResult(item: any, query: string, index: number) {
   const duration = Number(item?.lengthSeconds || item?.duration || 0);
   const published = Number(item?.published || 0);
   const ageDays = published > 0 ? Math.max(0, (Date.now() / 1000 - published) / 86400) : 9999;
+  const lyric = isLyricQuery(query);
   let score = 100 - index;
 
-    if (!queryMatchesResult(item, query)) return -999;
+  if (!queryMatchesResult(item, query)) return -999;
 
   if (q && haystack.includes(q)) score += 80;
-  score += tokens.reduce((sum, token) => sum + (haystack.includes(token) ? 34 : -28), 0);
-  if (/\b(official audio|official video|music video)\b/i.test(String(item?.title || ''))) score += 32;
+  // For lyric queries, reward token hits but never penalize misses
+  // (lyrics rarely appear in titles — trust provider ranking via 100 - index).
+  score += tokens.reduce(
+    (sum, token) => sum + (haystack.includes(token) ? 34 : lyric ? 0 : -28),
+    0,
+  );
+  if (/\b(official audio|official video|music video|lyrics?|lyrical)\b/i.test(String(item?.title || ''))) score += 32;
   if (duration >= 120 && duration <= 360) score += 30;
-  if (ageDays <= 90) score += 55;
-  else if (ageDays <= 365) score += 30;
-  else score -= 80;
+  if (lyric) {
+    // De-emphasize recency for lyric searches — user usually wants a specific song,
+    // which may be old. Without this, old originals get buried under fresh covers.
+    if (ageDays <= 365) score += 15;
+  } else {
+    if (ageDays <= 90) score += 55;
+    else if (ageDays <= 365) score += 30;
+    else score -= 80;
+  }
   if (looksSpammy(item, query)) score -= 180;
   return score;
 }
+
 
 function cleanTitle(raw: string) {
   const cleaned = raw
