@@ -116,6 +116,14 @@ export const usePremium = (): UsePremiumReturn => {
     subscription?.subscription_type !== 'free' &&
     (!subscription?.expires_at || new Date(subscription.expires_at) > new Date());
 
+  // Mirror the server-verified value into a runtime flag that other modules
+  // (PlayerContext, useGlobalAudioEngine) read instead of localStorage —
+  // localStorage can be edited from DevTools, this in-memory flag cannot
+  // be flipped without also patching the JS bundle.
+  useEffect(() => {
+    setRuntimePremium(!!isPremium);
+  }, [isPremium]);
+
   return {
     isPremium,
     subscription,
