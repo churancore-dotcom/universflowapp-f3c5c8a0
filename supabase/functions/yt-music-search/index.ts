@@ -220,53 +220,74 @@ serve(async (req) => {
 
     let invResults: SearchResult[] = [];
     const lyricMode = isLyricQuery(cleanQuery);
-    // For lyric queries skip the "fresh year" window entirely — most lyric
-    // searches target a specific older song.
-    const dateWindows = lyricMode ? [''] : ['year', ''];
-    // Append a query hint so YouTube/Invidious rank the right kind of video.
-    const providerQuery = lyricMode ? `${cleanQuery} lyrics` : `${cleanQuery} music`;
+    // Artist-style query = short (1-3 words), not a lyric. For these we fetch
+    // multiple pages from a single Invidious instance so the user sees the
+    // singer's full discography instead of just the first 20.
+    const artistMode = !lyricMode && cleanQuery.split(/\s+/).filter(Boolean).length <= 3;
+    const dateWindows = lyricMode || artistMode ? [''] : ['year', ''];
+    const providerQuery = lyricMode
+      ? `${cleanQuery} lyrics`
+      : artistMode
+        ? `${cleanQuery} songs`
+        : `${cleanQuery} music`;
+    const pagesPerInstance = artistMode ? [1, 2, 3] : [1];
+
     for (const dateWindow of dateWindows) {
       for (const inst of INVIDIOUS_INSTANCES) {
         try {
-          const u = new URL(`${inst}/api/v1/search`);
-          u.searchParams.set('q', providerQuery);
-          u.searchParams.set('type', 'video');
-          u.searchParams.set('sort_by', sortBy);
-          if (dateWindow) u.searchParams.set('date', dateWindow);
-        const ctrl = new AbortController();
-        const tm = setTimeout(() => ctrl.abort(), 6000);
-        const r = await fetch(u.toString(), { headers: { Accept: 'application/json' }, signal: ctrl.signal });
-        clearTimeout(tm);
-        if (!r.ok) continue;
-        const items: any[] = await r.json();
-        invResults = items
-          .map((item: any, index: number) => ({ item, score: scoreResult(item, cleanQuery, index) }))
-          .filter(({ item, score }: any) => item?.videoId && score > -20 && !looksSpammy(item, cleanQuery))
-          .sort((a: any, b: any) => b.score - a.score)
-          .slice(0, limit)
-          .map((item: any) => {
-            item = item.item;
-            const videoId = item?.videoId;
-            if (!videoId) return null;
-            const parsed = cleanTitle(item.title || 'Unknown Title');
-            const thumb = item.videoThumbnails?.find((t: any) => t.quality === 'medium')?.url
-              || item.videoThumbnails?.find((t: any) => t.quality === 'high')?.url
-              || item.videoThumbnails?.[0]?.url;
-            const cover_url = thumb?.startsWith('/') ? `${inst}${thumb}` : thumb;
-            return {
-              id: `ytm-${videoId}`,
-              videoId,
-              title: parsed.title,
-              artist: parsed.artist || item.author || 'Unknown Artist',
-              audio_url: `yt-video:${videoId}`,
-              cover_url,
-              duration: item.lengthSeconds || undefined,
-              published: item.published || undefined,
-            };
-          })
-          .filter(Boolean) as SearchResult[];
+          const seen = new Set<string>();
+          const aggregated: any[] = [];
+          for (const page of pagesPerInstance) {
+            const u = new URL(`${inst}/api/v1/search`);
+            u.searchParams.set('q', providerQuery);
+            u.searchParams.set('type', 'video');
+            u.searchParams.set('sort_by', sortBy);
+            if (dateWindow) u.searchParams.set('date', dateWindow);
+            if (page > 1) u.searchParams.set('page', String(page));
+            const ctrl = new AbortController();
+            const tm = setTimeout(() => ctrl.abort(), 6000);
+            const r = await fetch(u.toString(), { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+            clearTimeout(tm);
+            if (!r.ok) { if (page === 1) break; else continue; }
+            const items: any[] = await r.json();
+            if (!Array.isArray(items) || items.length === 0) break;
+            for (const it of items) {
+              const vid = it?.videoId;
+              if (!vid || seen.has(vid)) continue;
+              seen.add(vid);
+              aggregated.push(it);
+            }
+            if (aggregated.length >= limit * 2) break;
+          }
+          if (aggregated.length === 0) continue;
+          invResults = aggregated
+            .map((item: any, index: number) => ({ item, score: scoreResult(item, cleanQuery, index) }))
+            .filter(({ item, score }: any) => item?.videoId && score > -20 && !looksSpammy(item, cleanQuery))
+            .sort((a: any, b: any) => b.score - a.score)
+            .slice(0, limit)
+            .map((entry: any) => {
+              const item = entry.item;
+              const videoId = item?.videoId;
+              if (!videoId) return null;
+              const parsed = cleanTitle(item.title || 'Unknown Title');
+              const thumb = item.videoThumbnails?.find((t: any) => t.quality === 'medium')?.url
+                || item.videoThumbnails?.find((t: any) => t.quality === 'high')?.url
+                || item.videoThumbnails?.[0]?.url;
+              const cover_url = thumb?.startsWith('/') ? `${inst}${thumb}` : thumb;
+              return {
+                id: `ytm-${videoId}`,
+                videoId,
+                title: parsed.title,
+                artist: parsed.artist || item.author || 'Unknown Artist',
+                audio_url: `yt-video:${videoId}`,
+                cover_url,
+                duration: item.lengthSeconds || undefined,
+                published: item.published || undefined,
+              };
+            })
+            .filter(Boolean) as SearchResult[];
           if (invResults.length > 0) {
-            console.log(`Invidious search OK via ${inst} (${dateWindow || 'all-time'}): ${invResults.length} results`);
+            console.log(`Invidious OK via ${inst} (${dateWindow || 'all-time'}, pages=${pagesPerInstance.length}): ${invResults.length}/${aggregated.length} results`);
             break;
           }
         } catch (e) {
