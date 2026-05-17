@@ -90,26 +90,41 @@ const GlobalTopTracksSection = () => {
 
   const handlePlay = useCallback(async (track: IndexedTrack) => {
     setResolvingId(track.id);
+    const startIdx = tracks.findIndex(t => t.id === track.id);
+    // Try the clicked track, then walk forward through the rail on failure.
+    // Max 5 attempts so a regional outage doesn't spin forever.
+    const order = [track, ...tracks.slice(startIdx + 1)].slice(0, 5);
+    let lastErr: unknown = null;
     try {
-      const resolved = await resolveIndexedTrack(track.artist, track.title);
-      if (!resolved.streamUrl) throw new Error('No stream available for this track');
-      const song: Song = {
-        id: track.id,
-        title: resolved.title || track.title,
-        artist: resolved.artist || track.artist,
-        album: track.album,
-        cover_url: resolved.cover_url || track.cover_url,
-        audio_url: resolved.streamUrl,
-        duration: resolved.duration || track.duration,
-        source: 'indexed',
-      };
-      const queue: Song[] = tracks.map(t => ({
-        id: t.id, title: t.title, artist: t.artist, album: t.album,
-        cover_url: t.cover_url, audio_url: 'resolving', source: 'indexed' as const,
-      }));
-      playSong(song, undefined, queue);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not play this track');
+      for (const candidate of order) {
+        try {
+          const resolved = await resolveIndexedTrack(candidate.artist, candidate.title);
+          if (!resolved.streamUrl) throw new Error('No stream');
+          const song: Song = {
+            id: candidate.id,
+            title: resolved.title || candidate.title,
+            artist: resolved.artist || candidate.artist,
+            album: candidate.album,
+            cover_url: resolved.cover_url || candidate.cover_url,
+            audio_url: resolved.streamUrl,
+            duration: resolved.duration || candidate.duration,
+            source: 'indexed',
+          };
+          const queue: Song[] = tracks.map(t => ({
+            id: t.id, title: t.title, artist: t.artist, album: t.album,
+            cover_url: t.cover_url, audio_url: 'resolving', source: 'indexed' as const,
+          }));
+          if (candidate.id !== track.id) {
+            toast.message(`Skipped to "${candidate.title}" — original stream unavailable`);
+          }
+          playSong(song, undefined, queue);
+          return;
+        } catch (e) {
+          lastErr = e;
+          // try next
+        }
+      }
+      toast.error(lastErr instanceof Error ? lastErr.message : 'Could not play this track');
     } finally {
       setResolvingId(null);
     }
