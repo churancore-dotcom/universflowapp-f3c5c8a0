@@ -96,10 +96,15 @@ const AUDIO_PROXY_ALLOWED_HOST_SUFFIXES = [
   '.piped.kavin.rocks',
   '.piped.tokhmi.xyz',
   '.piped.adminforge.de',
+  '.projectsegfau.lt',
   '.invidious.io',
   '.invidious.privacydev.net',
   '.invidious.fdn.fr',
   '.invidious.projectsegfau.lt',
+  '.invidious.protokolla.fi',
+  '.protokolla.fi',
+  '.invidious.f5.si',
+  '.f5.si',
   '.yewtu.be',
 ];
 
@@ -117,31 +122,18 @@ const YOUTUBE_API_KEY_2 = Deno.env.get('YOUTUBE_API_KEY_2') || '';
 const YOUTUBE_API_KEYS = [YOUTUBE_API_KEY, YOUTUBE_API_KEY_2].filter(Boolean);
 const LASTFM_BASE_URL = 'https://ws.audioscrobbler.com/2.0/';
 
-// ── Instance lists (pruned to actually-working ones, April 2026) ──
+// ── Instance lists (verified working May 2026) ──
 
 const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
   'https://api.piped.private.coffee',
+  'https://api.piped.projectsegfau.lt',
+  'https://pipedapi.in.projectsegfau.lt',
   'https://pipedapi.tokhmi.xyz',
-  'https://pipedapi.moomoo.me',
-  'https://pipedapi.syncpundit.io',
-  'https://api-piped.mha.fi',
-  'https://pipedapi.leptons.xyz',
-  'https://pipedapi.r4fo.com',
-  'https://pipedapi.adminforge.de',
-  'https://api.piped.yt',
 ];
 
 const INVIDIOUS_INSTANCES = [
-  'https://invidious-production-d29a.up.railway.app',
-  'https://inv.nadeko.net',
-  'https://invidious.private.coffee',
-  'https://invidious.nerdvpn.de',
-  'https://iv.datura.network',
+  'https://invidious.f5.si',
   'https://invidious.protokolla.fi',
-  'https://invidious.jing.rocks',
-  'https://iv.nboez.cc',
-  'https://invidious.slipfox.xyz',
 ];
 
 // ── Dynamic instance discovery (cached 30 min) ──
