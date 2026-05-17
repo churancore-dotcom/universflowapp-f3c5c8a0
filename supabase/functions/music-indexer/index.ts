@@ -955,11 +955,8 @@ async function resolveVideoId(videoId: string): Promise<{ streamUrl: string; dur
         const data = await fetchJson(`${inst}/api/v1/videos/${videoId}`, 7000);
         const url = pickBestStream(data, inst);
         if (!url) throw new Error('no audio stream');
-        // Skip non-CORS URLs — they will fail in browser playback
-        if (!isCorsCompatible(url)) {
-          console.warn(`[resolve] skipping non-CORS stream from ${inst}`);
-          throw new Error('non-CORS stream');
-        }
+        // HTML5 <audio> can play googlevideo URLs without CORS; only probe liveness.
+        if (!(await probePlayableStream(url))) throw new Error('stream not playable');
         console.log(`[resolve] ✓ ${videoId} via ${inst}`);
         return { streamUrl: url, duration: Number(data.lengthSeconds || 0) || undefined };
       } catch (e) { markFailed(inst); throw e; }
