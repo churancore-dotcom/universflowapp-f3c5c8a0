@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserArtistPrefs } from '@/lib/userArtistPrefs';
-import { prefetchIndexedTrack, resolveIndexedTrack, type IndexedTrack } from '@/lib/musicIndexer';
+import { prefetchIndexedTrack, resolveIndexedTrack, getArtistTopTracksByName, type IndexedTrack } from '@/lib/musicIndexer';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
