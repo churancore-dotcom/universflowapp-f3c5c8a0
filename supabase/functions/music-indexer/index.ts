@@ -938,8 +938,8 @@ async function resolveVideoId(videoId: string): Promise<{ streamUrl: string; dur
   const piped = getPipedInstances().filter(isHealthy);
   const inv = getInvidiousInstances().filter(isHealthy);
 
-  // Put the known-reliable instance first
-  const primaryPiped = 'https://api.piped.private.coffee';
+  // Put the known-reliable instance first (pipedapi.kavin.rocks per integration spec)
+  const primaryPiped = 'https://pipedapi.kavin.rocks';
   const orderedPiped = [primaryPiped, ...piped.filter(i => i !== primaryPiped)].slice(0, 4);
 
   // Try primary first (fast path)
