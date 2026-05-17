@@ -540,13 +540,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // cached URL just failed to play (stale Invidious link, expired token, etc).
   const resolveAudioUrl = useCallback(
     async (song: Song, opts: { forceRefresh?: boolean } = {}): Promise<string | null> => {
-      if (!opts.forceRefresh && isPlayableUrl(song.audio_url)) return song.audio_url;
-      if (!song.artist || !song.title) return null;
-      try {
-        const result = await resolveIndexedTrack(song.artist, song.title, opts);
-        if (result?.streamUrl) return result.streamUrl;
-      } catch { /* fall through */ }
-      return null;
+      const ytFallback = isYouTubeFallbackUrl(song.audio_url) ? song.audio_url ?? null : null;
+      // Skip resolution only when we already have a real (non-YT-iframe) URL.
+      if (!opts.forceRefresh && isPlayableUrl(song.audio_url) && !ytFallback) {
+        return song.audio_url!;
+      }
+      if (song.artist && song.title) {
+        try {
+          const result = await resolveIndexedTrack(song.artist, song.title, opts);
+          if (result?.streamUrl) return result.streamUrl;
+        } catch { /* fall through to YT iframe fallback */ }
+      }
+      // Direct stream lookup failed — fall back to the YouTube iframe marker
+      // (the player handles `yt-video:` URLs in playSongAtIndex).
+      return ytFallback;
     },
     [isPlayableUrl],
   );
@@ -703,7 +710,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const song = songQueue[index];
     if (!song || !audioRef.current) return;
 
-    if (!isPlayableUrl(song.audio_url)) {
+    // Try to upgrade YT-iframe placeholders to a direct audio stream before play,
+    // so we only fall back to the (often blocked) YouTube iframe when needed.
+    const needsResolution = !isPlayableUrl(song.audio_url) || isYouTubeFallbackUrl(song.audio_url);
+    if (needsResolution) {
       try {
         const resolved = await resolveAudioUrl(song);
         if (!resolved) {
@@ -711,7 +721,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setIsPlaying(false);
           return;
         }
-
         songQueue[index] = { ...song, audio_url: resolved };
       } catch {
         setIsPlaying(false);
@@ -732,14 +741,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       nextAudioRef.current.src = '';
     }
 
+    // Pick up any URL that the early-resolution step upgraded.
+    const resolvedSong = songQueue[index] ?? song;
+
     // Update state first for instant UI response
-    setCurrentSong(song);
+    setCurrentSong(resolvedSong);
     setCurrentIndex(index);
     setProgress(0);
     setIsPlaying(true);
 
     // Resolve audio URL if needed
-    let audioUrl = song.audio_url;
+    let audioUrl = resolvedSong.audio_url;
     if (!isPlayableUrl(audioUrl)) {
       try {
         const resolved = await resolveAudioUrl(song);
