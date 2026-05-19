@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Music2, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserArtistPrefs } from '@/lib/userArtistPrefs';
