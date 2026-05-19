@@ -145,31 +145,6 @@ const shouldProxyStreamUrl = (sourceUrl: string) => {
   }
 };
 
-// ── Free-tier skip cap ──
-// Enforced SERVER-SIDE via the `consume_free_skip` RPC, which uses
-// `api_rate_limits` and `is_premium_user(auth.uid())` so a tampered client
-// cannot bypass it. The local function only asks the server for a decision.
-
-const consumeServerSkip = async (): Promise<{ allowed: boolean; remaining: number | null; premium: boolean }> => {
-  try {
-    const { data, error } = await supabase.rpc('consume_free_skip');
-    if (error || !data) {
-      // Fail-open ONLY on a transient network error — never gives premium
-      // perks (server still decides next time). Lets free users skip if
-      // they're temporarily offline rather than freezing the player.
-      return { allowed: true, remaining: null, premium: false };
-    }
-    const payload = data as { allowed?: boolean; remaining?: number | null; premium?: boolean };
-    return {
-      allowed: payload.allowed !== false,
-      remaining: payload.remaining ?? null,
-      premium: !!payload.premium,
-    };
-  } catch {
-    return { allowed: true, remaining: null, premium: false };
-  }
-};
-
 // Cache the current access token so we can append it to <audio src> proxy URLs.
 // (audio elements can't send custom Authorization headers.)
 let cachedAccessToken: string | null = null;
@@ -1278,26 +1253,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [teardownYouTubePlayback]);
 
   const nextSong = useCallback(async () => {
-    // Free-tier skip cap (Spotify-style): 6/hour, unlimited on Premium.
-    // Enforced server-side via the consume_free_skip RPC so a tampered
-    // client cannot bypass it.
-    const { allowed, remaining, premium } = await consumeServerSkip();
-    if (!allowed) {
-      toast.error('Skip limit reached', {
-        description: 'Upgrade to Premium for unlimited skips.',
-        action: {
-          label: 'Upgrade',
-          onClick: () => { window.location.href = '/premium'; },
-        },
-      });
-      return;
-    }
-    if (!premium && remaining !== null && remaining <= 2) {
-      toast.message(`${remaining} skip${remaining === 1 ? '' : 's'} left this hour`, {
-        description: 'Premium = unlimited skips',
-      });
-    }
-
     if (queue.length === 0) return;
 
     // Cancel crossfade
