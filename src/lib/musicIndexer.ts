@@ -339,7 +339,7 @@ export async function resolveIndexedTrack(
       return dbHit;
     }
 
-    return await resolveViaEdgeFunction(artist, title, cacheKey);
+    return await resolveViaEdgeFunction(artist, title, cacheKey, opts.forceRefresh === true);
   })().finally(() => {
     inFlightResolutions.delete(cacheKey);
   });
@@ -348,12 +348,12 @@ export async function resolveIndexedTrack(
   return pending;
 }
 
-async function resolveViaEdgeFunction(artist: string, title: string, cacheKey: string): Promise<ResolveTrackResponse> {
+async function resolveViaEdgeFunction(artist: string, title: string, cacheKey: string, forceRefresh = false): Promise<ResolveTrackResponse> {
   const result = await requestIndexer<ResolveTrackResponse>({
     action: 'resolve',
     artist,
     title,
-    forceRefresh: true,
+    forceRefresh,
   });
 
   if (!result?.success || !result.streamUrl) {

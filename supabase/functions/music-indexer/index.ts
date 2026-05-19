@@ -49,7 +49,8 @@ async function getDbCachedStream(artist: string, title: string): Promise<{ strea
     if (isKnownBrokenStreamUrl(data.audio_url as string)) return null;
     const ageMs = Date.now() - new Date(data.last_seen_at as string).getTime();
     if (ageMs > STREAM_DB_CACHE_TTL_MS) return null;
-    if (!(await probePlayableStream(data.audio_url as string, 2500))) return null;
+    // Do not block playback startup by probing cached streams here. If a cached
+    // URL has expired, the player force-refreshes it after the first media error.
     const meta = (data.metadata as Record<string, unknown>) || {};
     return {
       streamUrl: data.audio_url as string,
@@ -127,12 +128,26 @@ const LASTFM_BASE_URL = 'https://ws.audioscrobbler.com/2.0/';
 // ── Instance lists (verified working May 2026) ──
 
 const PIPED_INSTANCES = [
+  'https://pipedapi.adminforge.de',
   'https://api.piped.private.coffee',
+  'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',
+  'https://pipedapi.syncpundit.io',
+  'https://api-piped.mha.fi',
+  'https://pipedapi.leptons.xyz',
+  'https://pipedapi.r4fo.com',
+  'https://api.piped.yt',
 ];
 
 const INVIDIOUS_INSTANCES = [
   'https://inv.thepixora.com',
   'https://invidious.f5.si',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.private.coffee',
+  'https://invidious.privacyredirect.com',
+  'https://invidious.protokolla.fi',
+  'https://invidious.jing.rocks',
+  'https://yewtu.be',
 ];
 
 // ── Dynamic instance discovery (cached 30 min) ──
@@ -165,13 +180,13 @@ async function refreshInstances() {
 
 function getPipedInstances(): string[] {
   const all = [...new Set([...dynamicPiped, ...PIPED_INSTANCES])];
-  // deprioritize recently-failed
-  return all.sort((a, b) => (failedUntil.get(a) || 0) - (failedUntil.get(b) || 0));
+  // Prefer explicit known instances; dynamic instances follow as extra fallbacks.
+  return all.sort((a, b) => (PIPED_INSTANCES.includes(a) ? 0 : 1) - (PIPED_INSTANCES.includes(b) ? 0 : 1));
 }
 
 function getInvidiousInstances(): string[] {
   const all = [...new Set([...dynamicInvidious, ...INVIDIOUS_INSTANCES])];
-  return all.sort((a, b) => (failedUntil.get(a) || 0) - (failedUntil.get(b) || 0));
+  return all.sort((a, b) => (INVIDIOUS_INSTANCES.includes(a) ? 0 : 1) - (INVIDIOUS_INSTANCES.includes(b) ? 0 : 1));
 }
 
 // ── Health tracking: skip instances that failed recently ──
@@ -691,7 +706,8 @@ function isBadVideoCandidate(item: Record<string, unknown>, artist: string, titl
   const normalizedWanted = normalizeText(`${artist} ${title}`);
   const normalizedRaw = normalizeText(raw);
   const dur = Number(item.lengthSeconds || item.duration || 0);
-  if (dur && (dur < 75 || dur > 540)) return true;
+  const isLongFormWanted = /\b(lofi|mix|playlist|live|concert|podcast|mashup|medley|jukebox)\b/.test(normalizedWanted);
+  if (dur && (dur < 45 || (!isLongFormWanted && dur > 720) || dur > 7200)) return true;
   if (BAD_VIDEO_PATTERNS.some((pattern) => pattern.test(raw))) return true;
   if (!normalizedWanted.includes('lofi') && normalizedRaw.includes('lofi')) return true;
   return false;
@@ -712,7 +728,7 @@ function scoreVideo(item: Record<string, unknown>, artist: string, title: string
   s += wTitle.split(' ').filter(w => w.length > 2 && iTitle.includes(w)).length * 1.5;
   ['karaoke','sped up','slowed','reverb','8d audio','nightcore','live','cover','remix','instrumental','jukebox','mashup','playlist','non stop']
     .forEach(t => { if (iTitle.includes(t) && !wTitle.includes(t)) s -= 8; });
-  if (dur >= 120 && dur <= 360) s += 5; else if (dur >= 75 && dur <= 540) s += 1; else s -= 8;
+  if (dur >= 120 && dur <= 420) s += 5; else if (dur >= 45 && dur <= 720) s += 1; else s -= 4;
   if (ageDays <= 365) s += 3; else if (published > 0) s -= 6;
   if (isBadVideoCandidate(item, artist, title)) s -= 20;
   return s;
@@ -740,8 +756,9 @@ async function searchForCandidates(artist: string, title: string): Promise<Recor
     candidates.push(item);
   };
 
-  // Try Piped first (generally more reliable)
-  const pipedInstances = getPipedInstances().filter(isHealthy).slice(0, 4);
+  // Try Piped first (generally more reliable). Do not globally skip recently
+  // failed instances here — one region/video failure should not limit playback.
+  const pipedInstances = getPipedInstances().slice(0, 8);
   const pipedResults = await Promise.allSettled(
     pipedInstances.map(async (inst) => {
       try {
@@ -809,7 +826,7 @@ async function searchForCandidates(artist: string, title: string): Promise<Recor
   if (candidates.length >= 4) return candidates.slice(0, 8);
 
   // Last resort: Invidious
-  const invInstances = getInvidiousInstances().filter(isHealthy).slice(0, 2);
+  const invInstances = getInvidiousInstances().slice(0, 5);
   const invResults = await Promise.allSettled(
     invInstances.map(async (inst) => {
       try {
@@ -971,13 +988,13 @@ async function resolveVideoId(videoId: string): Promise<{ streamUrl: string; dur
   // resolvable from the edge runtime (DNS NXDOMAIN), and the 8s timeout
   // added massive latency to every resolve. Go straight to Piped/Invidious.
 
-  const piped = getPipedInstances().filter(isHealthy);
-  const inv = getInvidiousInstances().filter(isHealthy);
+  const piped = getPipedInstances();
+  const inv = getInvidiousInstances();
 
   // Piped adminforge currently redirects /streams to the invalid host
   // "adminforge.destreams". Use the working Invidious audio proxy first.
   const primaryInvidious = 'https://inv.thepixora.com';
-  const orderedInvidious = [primaryInvidious, ...inv.filter(i => i !== primaryInvidious)].slice(0, 3);
+  const orderedInvidious = [primaryInvidious, ...inv.filter(i => i !== primaryInvidious)].slice(0, 7);
 
   // Try primary first (fast path)
   try {
@@ -1006,7 +1023,7 @@ async function resolveVideoId(videoId: string): Promise<{ streamUrl: string; dur
         return { streamUrl: url, duration: Number(data.lengthSeconds || 0) || undefined };
       } catch (e) { markFailed(inst); throw e; }
     }),
-    ...piped.slice(0, 2).map(async (inst) => {
+    ...piped.slice(0, 8).map(async (inst) => {
       try {
         const data = await fetchJson(`${inst}/streams/${videoId}`, 7000);
         const url = await pickBestPipedStream(data, inst);
