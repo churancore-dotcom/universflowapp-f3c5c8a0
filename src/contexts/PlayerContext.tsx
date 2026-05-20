@@ -531,6 +531,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!opts.forceRefresh && isPlayableUrl(song.audio_url) && !ytFallback) {
         return song.audio_url!;
       }
+      // JioSaavn tracks: ids prefixed with `saavn-` resolve via the JioSaavn worker.
+      if (song.id?.startsWith('saavn-')) {
+        try {
+          const { getSongStreamUrl } = await import('@/lib/jiosaavn');
+          const result = await getSongStreamUrl(song.id);
+          if (result?.streamUrl) return result.streamUrl;
+        } catch { /* fall through */ }
+      }
       if (song.artist && song.title) {
         try {
           const result = await resolveIndexedTrack(song.artist, song.title, opts);
