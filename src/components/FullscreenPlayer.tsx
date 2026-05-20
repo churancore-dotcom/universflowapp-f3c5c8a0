@@ -148,7 +148,8 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
 
   if (!currentSong || !isExpanded) return null;
 
-  const safeProgress = isFinite(progress) ? progress : 0;
+  const liveProgress = isFinite(progress) ? progress : 0;
+  const safeProgress = dragProgress !== null ? dragProgress : liveProgress;
   const safeDuration = isFinite(duration) && duration > 0 ? duration : 100;
   const timeRemaining = safeDuration - safeProgress;
   const showLikeAction = canLikeSong(currentSong);
