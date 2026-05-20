@@ -329,7 +329,8 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
                   value={[safeProgress]} 
                   max={safeDuration} 
                   step={0.1} 
-                  onValueChange={([value]) => seek(value)} 
+                  onValueChange={([value]) => setDragProgress(value)}
+                  onValueCommit={([value]) => { seek(value); setDragProgress(null); }}
                   className="[&_[role=slider]]:w-[18px] [&_[role=slider]]:h-[18px] [&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[data-radix-slider-track]]:h-[5px] [&_[data-radix-slider-track]]:bg-white/15 [&_[data-radix-slider-range]]:bg-rose-500" 
                 />
                 <div className="flex justify-between mt-1.5 text-[11px] font-semibold text-white/50 tabular-nums">
