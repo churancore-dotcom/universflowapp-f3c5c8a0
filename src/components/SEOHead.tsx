@@ -30,6 +30,8 @@ const SEOHead = ({
   url,
   path,
   type = 'website',
+  jsonLd,
+  jsonLdId,
 }: SEOHeadProps) => {
   const location = useLocation();
   const resolvedPath = path ?? location.pathname ?? '/';
