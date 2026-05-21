@@ -510,10 +510,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         a.addEventListener('loadedmetadata', restore, { once: true });
       } catch { /* ignore */ }
     };
+    const onEqStorageChanged = (e: StorageEvent) => {
+      if (e.key === EQ_SETTINGS_KEY) onEqChanged();
+    };
     window.addEventListener('uf-eq-changed', onEqChanged);
-    window.addEventListener('storage', (e) => { if (e.key === EQ_SETTINGS_KEY) onEqChanged(); });
+    window.addEventListener('storage', onEqStorageChanged);
     return () => {
       window.removeEventListener('uf-eq-changed', onEqChanged);
+      window.removeEventListener('storage', onEqStorageChanged);
     };
   }, [currentSong?.audio_url]);
 
