@@ -268,9 +268,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [showPrerollAd, setShowPrerollAd] = useState(false);
   const [adType, setAdType] = useState<'start' | 'end'>('start');
   const [pendingSong, setPendingSong] = useState<{ song: Song; offlineUrl?: string | null; songsQueue?: Song[] } | null>(null);
-  const [songsPlayedSinceAd, setSongsPlayedSinceAd] = useState(0);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
-  const AD_FREQUENCY = 3; // Show ad every 3 songs
   
   // Single audio element - simpler approach
   const audioRef = useRef<HTMLAudioElement | null>(null);
