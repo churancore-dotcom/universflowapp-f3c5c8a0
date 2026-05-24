@@ -12,11 +12,11 @@
 //     token in-memory and re-upsert it whenever auth state becomes
 //     authenticated.
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 
 const isNative = () =>
-  typeof window.Capacitor !== 'undefined' &&
-  window.Capacitor.isNativePlatform?.() === true;
+  Capacitor.isNativePlatform?.() === true;
 
 // Module-level so other callers (e.g. a "Re-register device" button) can
 // trigger a manual retry without needing to remount the hook.
