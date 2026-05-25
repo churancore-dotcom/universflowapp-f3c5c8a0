@@ -2,10 +2,45 @@ import type { IndexedTrack } from './musicIndexer';
 
 const API = 'https://jiosaavn-api.universflow.workers.dev';
 
-const cache = new Map<string, any>();
+interface SaavnImage {
+  url?: string;
+  link?: string;
+}
+
+interface SaavnDownloadUrl {
+  quality?: string;
+  url?: string;
+  link?: string;
+}
+
+interface SaavnSong {
+  id?: string;
+  name?: string;
+  title?: string;
+  image?: string | SaavnImage[];
+  downloadUrl?: string | SaavnDownloadUrl[];
+  artists?: { primary?: Array<{ name?: string }> };
+  primaryArtists?: string;
+  artist?: string;
+  album?: { name?: string } | string;
+  duration?: number | string;
+  playCount?: number | string;
+}
+
+interface SaavnStreamResult {
+  streamUrl: string;
+  id?: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration?: number | string;
+  image?: string;
+}
+
+const cache = new Map<string, SaavnStreamResult>();
 const SEARCH_TIMEOUT_MS = 8000;
 
-async function fetchJson(url: string) {
+async function fetchJson(url: string): Promise<unknown | null> {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
   try {
@@ -17,10 +52,10 @@ async function fetchJson(url: string) {
   }
 }
 
-export async function searchSongs(query: string, limit = 20) {
+export async function searchSongs(query: string, limit = 20): Promise<SaavnSong[]> {
   try {
-    const data = await fetchJson(`${API}/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`);
-    return data.data?.results ?? [];
+    const data = await fetchJson(`${API}/api/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`) as { data?: { results?: SaavnSong[] } } | null;
+    return Array.isArray(data?.data?.results) ? data.data.results : [];
   } catch {
     return [];
   }
@@ -35,7 +70,7 @@ function decodeEntities(value = ''): string {
     .replace(/&gt;/g, '>');
 }
 
-function bestImage(images: any): string | undefined {
+function bestImage(images: SaavnSong['image']): string | undefined {
   if (!images) return undefined;
   if (typeof images === 'string') return images;
   if (Array.isArray(images)) {
@@ -45,22 +80,22 @@ function bestImage(images: any): string | undefined {
   return undefined;
 }
 
-function bestAudio(downloadUrl: any): string | undefined {
+function bestAudio(downloadUrl: SaavnSong['downloadUrl']): string | undefined {
   if (!downloadUrl) return undefined;
   if (typeof downloadUrl === 'string') return downloadUrl;
   if (Array.isArray(downloadUrl)) {
-    const hi = downloadUrl.find((u: any) => u.quality === '320kbps')
-      || downloadUrl.find((u: any) => u.quality === '160kbps')
+    const hi = downloadUrl.find((u) => u.quality === '320kbps')
+      || downloadUrl.find((u) => u.quality === '160kbps')
       || downloadUrl[downloadUrl.length - 1];
     return hi?.url || hi?.link;
   }
   return undefined;
 }
 
-function primaryArtists(song: any): string {
+function primaryArtists(song: SaavnSong): string {
   const primary = song?.artists?.primary;
   if (Array.isArray(primary) && primary.length) {
-    return primary.map((a: any) => a.name).filter(Boolean).join(', ');
+    return primary.map((a) => a.name).filter(Boolean).join(', ');
   }
   if (typeof song?.primaryArtists === 'string') return song.primaryArtists;
   return song?.artist || '';
@@ -68,7 +103,7 @@ function primaryArtists(song: any): string {
 
 const clean = (value = '') => decodeEntities(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-function scoreSong(song: any, title: string, artist = ''): number {
+function scoreSong(song: SaavnSong, title: string, artist = ''): number {
   const songTitle = clean(song?.name || song?.title || '');
   const songArtist = clean(primaryArtists(song));
   const wantedTitle = clean(title);
@@ -82,7 +117,7 @@ function scoreSong(song: any, title: string, artist = ''): number {
   return titleScore + artistScore + Math.min(20, Math.log10(Math.max(1, Number(song?.playCount) || 1)) * 4);
 }
 
-function isConfidentMatch(song: any, title: string, artist = ''): boolean {
+function isConfidentMatch(song: SaavnSong, title: string, artist = ''): boolean {
   const songTitle = clean(song?.name || song?.title || '');
   const songArtist = clean(primaryArtists(song));
   const wantedTitle = clean(title);
