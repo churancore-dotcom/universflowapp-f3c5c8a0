@@ -819,7 +819,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Trigger normal "ended" pipeline
         const evt = new Event('ended');
         try { audioRef.current?.dispatchEvent(evt); } catch { /* ignore */ }
-      });
+      }, mySeq, intendedIdentity);
       return;
     }
 
@@ -971,7 +971,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               if (videoId) {
                 await playYouTubeFallback(videoId, () => {
                   try { audioRef.current?.dispatchEvent(new Event('ended')); } catch { /* ignore */ }
-                });
+                }, seqAtRecoveryStart, activeIdentity);
                 return;
               }
             }
@@ -1149,7 +1149,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (videoId) {
         await playYouTubeFallback(videoId, () => {
           try { audioRef.current?.dispatchEvent(new Event('ended')); } catch { /* ignore */ }
-        });
+        }, mySeq, intendedIdentity);
       } else {
         setIsPlaying(false);
         toast.error('This song could not start right now.');
