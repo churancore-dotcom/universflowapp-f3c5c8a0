@@ -638,8 +638,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return mount;
   }, []);
 
-  const playYouTubeFallback = useCallback(async (videoId: string, onEnded: () => void) => {
+  const playYouTubeFallback = useCallback(async (videoId: string, onEnded: () => void, requestSeq?: number, songIdentity?: string) => {
+    const isStillCurrent = () =>
+      (requestSeq === undefined || requestSeq === playRequestSeqRef.current) &&
+      (!songIdentity || activeSongIdentityRef.current === songIdentity);
     try {
+      if (!isStillCurrent()) return;
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.removeAttribute('src');
@@ -648,6 +652,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const YT = await loadYouTubeIframeApi();
       if (!YT) throw new Error('YouTube API unavailable');
+      if (!isStillCurrent()) return;
 
       youtubeActiveRef.current = true;
       youtubeEndCallbackRef.current = onEnded;
@@ -657,7 +662,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           youtubePlayerRef.current.loadVideoById(videoId);
           youtubePlayerRef.current.setVolume?.(Math.round(volume * 100));
           startYouTubeProgressLoop();
-          setIsPlaying(true);
+          if (isStillCurrent()) setIsPlaying(true);
           return;
         } catch { /* recreate below */ }
       }
@@ -675,6 +680,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         playerVars: { autoplay: 1, controls: 0, modestbranding: 1, playsinline: 1, rel: 0 },
         events: {
           onReady: (e: { target: YouTubePlayer }) => {
+            if (!isStillCurrent()) return;
             try {
               e.target.setVolume?.(Math.round(volume * 100));
               e.target.playVideo();
@@ -685,6 +691,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setIsPlaying(true);
           },
           onStateChange: (e: { data: number }) => {
+            if (!isStillCurrent()) return;
             const states = YT.PlayerState;
             if (e.data === states.PLAYING) setIsPlaying(true);
             else if (e.data === states.PAUSED) setIsPlaying(false);
@@ -694,6 +701,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
           },
           onError: () => {
+            if (!isStillCurrent()) return;
             toast.info('Trying another source…');
             youtubeEndCallbackRef.current?.();
           },
