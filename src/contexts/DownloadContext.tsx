@@ -88,7 +88,7 @@ const openDB = (): Promise<IDBDatabase> => {
   });
 };
 
-const saveToDB = async (song: DownloadedSong, audioBlob: Blob): Promise<void> => {
+const saveToDB = async (song: DownloadedSong, audioBlob: Blob, coverBlob?: Blob | null): Promise<void> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -98,6 +98,7 @@ const saveToDB = async (song: DownloadedSong, audioBlob: Blob): Promise<void> =>
       const songData = {
         ...song,
         audioBlob,
+        coverBlob: coverBlob ?? null,
       };
       
       const request = store.put(songData);
@@ -110,7 +111,7 @@ const saveToDB = async (song: DownloadedSong, audioBlob: Blob): Promise<void> =>
   }
 };
 
-const getFromDB = async (id: string): Promise<{ song: DownloadedSong; audioBlob: Blob } | null> => {
+const getFromDB = async (id: string): Promise<{ song: DownloadedSong; audioBlob: Blob; coverBlob?: Blob | null } | null> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -121,8 +122,8 @@ const getFromDB = async (id: string): Promise<{ song: DownloadedSong; audioBlob:
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         if (request.result) {
-          const { audioBlob, ...song } = request.result;
-          resolve({ song, audioBlob });
+          const { audioBlob, coverBlob, ...song } = request.result;
+          resolve({ song, audioBlob, coverBlob });
         } else {
           resolve(null);
         }
@@ -150,7 +151,7 @@ const deleteFromDB = async (id: string): Promise<void> => {
   }
 };
 
-const getAllFromDB = async (): Promise<{ song: DownloadedSong; audioBlob: Blob }[]> => {
+const getAllFromDB = async (): Promise<{ song: DownloadedSong; audioBlob: Blob; coverBlob?: Blob | null }[]> => {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -161,8 +162,8 @@ const getAllFromDB = async (): Promise<{ song: DownloadedSong; audioBlob: Blob }
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const results = request.result.map((item: any) => {
-          const { audioBlob, ...song } = item;
-          return { song, audioBlob };
+          const { audioBlob, coverBlob, ...song } = item;
+          return { song, audioBlob, coverBlob };
         });
         resolve(results);
       };
