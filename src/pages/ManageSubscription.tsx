@@ -351,4 +351,47 @@ const Row = ({ label, value, valueClass = '' }: { label: string; value: string; 
   </div>
 );
 
+const PremiumDebugPanel = ({
+  verifiedStatus,
+  subscriptionRow,
+  lastRealtimeUpdate,
+  lastCheckedAt,
+  errorMessage,
+  onRefresh,
+}: {
+  verifiedStatus: boolean;
+  subscriptionRow: Record<string, unknown> | null;
+  lastRealtimeUpdate: string | null;
+  lastCheckedAt: string | null;
+  errorMessage: string | null;
+  onRefresh: () => Promise<void>;
+}) => (
+  <section className="rounded-2xl overflow-hidden bg-card border border-border/60 text-left">
+    <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">Premium status debug</p>
+        <p className="text-[11px] text-muted-foreground">Live server verification details</p>
+      </div>
+      <button
+        onClick={() => { void onRefresh(); }}
+        className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground"
+      >
+        Refresh
+      </button>
+    </div>
+    <div className="divide-y divide-border/60">
+      <Row label="Verified status" value={verifiedStatus ? 'Premium verified' : 'Not verified'} valueClass={verifiedStatus ? 'text-emerald-400' : 'text-amber-400'} />
+      <Row label="Last realtime update" value={formatDebugTime(lastRealtimeUpdate)} />
+      <Row label="Last server check" value={formatDebugTime(lastCheckedAt)} />
+      {errorMessage && <Row label="Last error" value={errorMessage} valueClass="text-red-400" />}
+    </div>
+    <div className="p-4 border-t border-border/60">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Subscription row</p>
+      <pre className="max-h-44 overflow-auto rounded-xl bg-background/70 border border-border/50 p-3 text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+        {subscriptionRow ? JSON.stringify(subscriptionRow, null, 2) : 'No subscription row returned by the server.'}
+      </pre>
+    </div>
+  </section>
+);
+
 export default ManageSubscription;
