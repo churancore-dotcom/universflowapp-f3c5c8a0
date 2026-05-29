@@ -339,6 +339,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Track whether audio was playing before going to background
   const wasPlayingRef = useRef(false);
   const keepAliveRef = useRef<number | null>(null);
+  const intentionalPauseRef = useRef(false);
+  const backgroundRecoveryTimerRef = useRef<number | null>(null);
+
+  const markIntentionalPause = useCallback(() => {
+    intentionalPauseRef.current = true;
+    window.setTimeout(() => { intentionalPauseRef.current = false; }, 900);
+  }, []);
 
   // Create audio element once
   useEffect(() => {
@@ -365,6 +372,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Entering background — remember if we were playing
         wasPlayingRef.current = !!(audioRef.current && !audioRef.current.paused);
       } else if (document.visibilityState === 'visible') {
+        if (backgroundRecoveryTimerRef.current) {
+          window.clearTimeout(backgroundRecoveryTimerRef.current);
+          backgroundRecoveryTimerRef.current = null;
+        }
         // Returning to foreground — resume if was playing
         if (wasPlayingRef.current && audioRef.current && audioRef.current.paused && audioRef.current.src) {
           audioRef.current.play().catch(() => {});
@@ -411,7 +422,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const mod = await import(/* @vite-ignore */ modName).catch(() => null) as CapacitorAppModule | null;
         if (!mod?.App) return;
         const handle = await mod.App.addListener('appStateChange', (state: { isActive: boolean }) => {
-          if (!state?.isActive) return;
+          if (!state?.isActive) {
+            wasPlayingRef.current = !!(audioRef.current && !audioRef.current.paused);
+            return;
+          }
           // Returning to foreground from native background:
           // 1) resume the Web Audio context (Android suspends it while backgrounded)
           // 2) clear any stale 'error' UI state by re-checking the audio element
@@ -436,6 +450,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       window.removeEventListener('focus', handleFocus);
       if (appResumeRemove) appResumeRemove();
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+      if (backgroundRecoveryTimerRef.current) clearTimeout(backgroundRecoveryTimerRef.current);
       audio.pause();
       audio.src = '';
       nextAudio.pause();
