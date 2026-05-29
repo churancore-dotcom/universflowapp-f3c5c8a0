@@ -1336,12 +1336,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } else {
       setIsPlaying(false);
+      markIntentionalPause();
       audioRef.current.pause();
     }
-  }, [currentSong, isPlaying]);
+  }, [currentSong, isPlaying, markIntentionalPause]);
 
   const pause = useCallback(() => {
     setIsPlaying(false);
+    markIntentionalPause();
     if (youtubeActiveRef.current && youtubePlayerRef.current) {
       try { youtubePlayerRef.current.pauseVideo(); } catch { /* ignore */ }
       return;
@@ -1349,7 +1351,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (audioRef.current) {
       audioRef.current.pause();
     }
-  }, []);
+  }, [markIntentionalPause]);
 
   const play = useCallback(() => {
     if (!currentSong) return;
