@@ -1623,6 +1623,39 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     import('@/lib/songHistory').then(({ addSongToHistory }) => addSongToHistory(currentSong));
   }, [currentSong?.id]);
 
+  // Screen Wake Lock while playing — prevents mobile browsers from suspending
+  // the page (and pausing audio) when the user locks their device screen.
+  // Auto re-acquires on visibility change. No-op on Capacitor APK where the
+  // foreground media notification service keeps audio alive.
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+    let sentinel: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sentinel = await (navigator as any).wakeLock.request('screen');
+        if (cancelled) {
+          sentinel?.release().catch(() => {});
+          sentinel = null;
+        }
+      } catch { /* ignore — user gesture or unsupported */ }
+    };
+    acquire();
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && !sentinel) acquire();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+      sentinel?.release().catch(() => {});
+      sentinel = null;
+    };
+  }, [isPlaying]);
+
+
   return (
     <PlayerContext.Provider value={{
       currentSong,
