@@ -7,7 +7,7 @@ interface Props { songs: Song[] }
 
 const FreshReleasesSection = memo(({ songs }: Props) => {
   const fresh = useMemo(() => {
-    const flagged = songs.filter((s) => s.show_in_new_releases);
+    const flagged = songs.filter((s) => (s as any).show_in_new_releases);
     if (flagged.length > 0) return flagged.slice(0, 20);
     // Fallback: newest by created_at
     return [...songs]

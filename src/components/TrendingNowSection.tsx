@@ -8,7 +8,7 @@ interface Props { songs: Song[] }
 
 const TrendingNowSection = memo(({ songs }: Props) => {
   const trending = useMemo(() => {
-    const filtered = songs.filter((s) => s.show_in_trending);
+    const filtered = songs.filter((s) => (s as any).show_in_trending);
     if (filtered.length > 0) return filtered.slice(0, 20);
     // Fallback: top of catalog so the shelf is never empty
     return songs.slice(0, 20);
