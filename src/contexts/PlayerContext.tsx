@@ -1045,9 +1045,23 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Play next song immediately without any async delay
         playSongAtIndex(nextIdx, queue);
       } else if (repeat === 'off' && queue.length > 0) {
-        // Stop at end of queue when repeat is off
-        setIsPlaying(false);
-        setProgress(0);
+        // End of queue — fire YouTube-style endless mix: pull more songs
+        // (same artist → genre/mood → trending) and continue playing.
+        const seed = queue[currentIndex] || currentSong;
+        extendQueueWithMix(seed).then((added) => {
+          if (added.length > 0) {
+            // Append happened via setQueueState; jump to the first new track.
+            const newQueue = [...queueRef.current];
+            const targetIdx = newQueue.findIndex((s) => s.id === added[0].id);
+            if (targetIdx >= 0) {
+              playSongAtIndex(targetIdx, newQueue);
+              return;
+            }
+          }
+          // Truly nothing to play — stop.
+          setIsPlaying(false);
+          setProgress(0);
+        });
       }
     };
 
