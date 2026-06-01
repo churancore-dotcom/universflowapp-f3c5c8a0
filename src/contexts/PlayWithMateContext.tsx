@@ -152,6 +152,8 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
   const persistIntervalRef = useRef<number | null>(null);
   const restoringRef = useRef(false);
   const applyingRemoteStateRef = useRef(false);
+  const currentSongRef = useRef<Song | null>(currentSong);
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
   const progressRef = { get current() { return playerProgressStore.getProgress(); } } as { current: number };
 
   const clearRealtime = useCallback(() => {
@@ -398,13 +400,12 @@ export const PlayWithMateProvider = ({ children }: { children: ReactNode }) => {
         .on('broadcast', { event: 'suggestion' }, ({ payload }) => {
           const s = payload as MateSuggestion;
           if (!s?.title || !s?.artist) return;
-          // Filter out suggestions for the song that is ALREADY playing in
-          // the room — keeps the host's inbox clean.
-          const currentId = currentSong?.id;
-          const currentTitle = (currentSong?.title || '').toLowerCase();
-          const isSameAsPlaying =
-            (currentId && (s as any).id && currentId === (s as any).id) ||
-            (currentTitle && s.title.toLowerCase() === currentTitle);
+          // Filter out suggestions for the song already playing in the room.
+          const cur = currentSongRef.current;
+          const isSameAsPlaying = !!cur && (
+            ((s as any).id && cur.id === (s as any).id) ||
+            (cur.title && s.title.toLowerCase() === cur.title.toLowerCase())
+          );
           if (isSameAsPlaying) return;
           if (nextRoom.role === 'host' && s.userId !== user.id) {
             setSuggestions((prev) => {
