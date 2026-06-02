@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User, Sparkles, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
-import { getUserArtistPrefs, type UserArtistPref } from '@/lib/userArtistPrefs';
+import { getUserArtistPrefs, followArtist, type UserArtistPref } from '@/lib/userArtistPrefs';
 import { getFeaturedIndexedArtists } from '@/lib/indexedArtists';
 
 interface DisplayArtist {
