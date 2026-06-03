@@ -1,7 +1,7 @@
 import { memo, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft, Crown, Check, Sparkles, Download, Headphones,
+  ChevronLeft, Crown, Check, Sparkles, Download,
   Zap, Gift, Copy, Loader2, ShieldCheck, Sliders, Music2, Infinity as InfinityIcon, Clock,
   Moon, Orbit, Building2,
 } from 'lucide-react';
@@ -35,18 +35,16 @@ const PLAN_LABEL: Record<PlanId, string> = {
 };
 
 const FEATURES = [
-  { icon: Zap,         title: 'Zero Ads',                desc: 'No pre-rolls, banners or interruptions. Ever.' },
-  { icon: Orbit,       title: 'Spatial 3D Audio',        desc: 'Cinema-grade surround that orbits the song around your head — only on Universflow.' },
-  { icon: Sliders,     title: '8-Band Studio Equalizer', desc: 'Studio-grade tuning with crafted presets — works on every stream.' },
-  { icon: Building2,   title: 'Studio Spaces',           desc: 'Hear songs inside a Vinyl Booth, Cathedral, Stadium and more — a Universflow exclusive nobody else offers.' },
-  { icon: Moon,        title: 'Late Night Mode',         desc: 'Lifts whispered details and tames loud peaks so quiet listening still sounds full.' },
-  
-  { icon: Download,    title: 'Unlimited Downloads',     desc: 'Save anything. Listen offline. Anywhere.' },
-  { icon: Music2,      title: 'AI Playlist Generator',   desc: 'Mood-matched playlists, made instantly.' },
-  { icon: InfinityIcon, title: 'Crossfade & Gapless',    desc: 'Seamless transitions, end to end.' },
-  
-  { icon: Sparkles,    title: 'Premium-Only Tracks',     desc: 'Early drops and exclusive releases.' },
-  { icon: ShieldCheck, title: 'Priority Support',        desc: 'Skip the line — we answer first.' },
+  { icon: Zap,          title: 'Zero Ads',                desc: 'No pre-rolls, no banners. Music, uninterrupted.' },
+  { icon: Orbit,        title: 'Spatial 3D Audio',        desc: 'Cinema-grade surround that orbits around your head.' },
+  { icon: Sliders,      title: '8-Band Studio EQ',        desc: 'Studio-grade tuning with crafted presets.' },
+  { icon: Building2,    title: 'Studio Spaces',           desc: 'Vinyl Booth, Cathedral, Stadium — pick your room.' },
+  { icon: Moon,         title: 'Late Night Mode',         desc: 'Whispered details lifted, loud peaks tamed.' },
+  { icon: Download,     title: 'Unlimited Downloads',     desc: 'Save anything. Listen offline. Anywhere.' },
+  { icon: Music2,       title: 'AI Playlists',            desc: 'Mood-matched playlists, made instantly.' },
+  { icon: InfinityIcon, title: 'Crossfade & Gapless',     desc: 'Seamless transitions, end to end.' },
+  { icon: Sparkles,     title: 'Premium-Only Tracks',     desc: 'Early drops and exclusive releases.' },
+  { icon: ShieldCheck,  title: 'Priority Support',        desc: 'Skip the line — we answer first.' },
 ];
 
 interface PendingPayment {
@@ -89,7 +87,6 @@ const PremiumPage = memo(function PremiumPage() {
     })();
   }, []);
 
-  // Detect any pending payment request for this user
   useEffect(() => {
     if (!user || isPremium) { setPending(null); return; }
     let cancelled = false;
@@ -106,7 +103,6 @@ const PremiumPage = memo(function PremiumPage() {
     };
     fetchPending();
 
-    // Realtime: react to status updates on payment_requests + subscriptions
     const prChannel = supabase
       .channel(`user-pr-${user.id}`)
       .on('postgres_changes', {
@@ -182,29 +178,22 @@ const PremiumPage = memo(function PremiumPage() {
         ]}
       />
       <motion.div
-        className="min-h-screen pb-44 relative overflow-hidden"
-        style={{
-          background: 'radial-gradient(120% 80% at 50% -10%, #1a1a2e 0%, #0b0b14 55%, #050509 100%)',
-          fontFamily: "'Work Sans', system-ui, sans-serif",
-          color: '#e8e8f0',
-        }}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+        className="min-h-screen pb-44 relative overflow-hidden bg-background text-foreground"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}
       >
-        {/* ─── Static iridescent backdrop (NO heavy moving blurs — perf) ─── */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Static rose glow — anchored top, single blur, perf-safe */}
+        <div className="absolute inset-x-0 top-0 h-[420px] pointer-events-none overflow-hidden">
           <div
-            className="absolute -top-32 -left-24 w-[520px] h-[520px] rounded-full opacity-50"
-            style={{ background: 'radial-gradient(circle, #c4b5fd 0%, transparent 65%)', filter: 'blur(120px)' }}
-          />
-          <div
-            className="absolute top-[42%] -right-32 w-[440px] h-[440px] rounded-full opacity-40"
-            style={{ background: 'radial-gradient(circle, #67e8f9 0%, transparent 65%)', filter: 'blur(110px)' }}
-          />
-          {/* Fine film grain */}
-          <div
-            className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[680px] h-[680px] rounded-full opacity-[0.35]"
             style={{
-              backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"160\\" height=\\"160\\"><filter id=\\"n\\"><feTurbulence type=\\"fractalNoise\\" baseFrequency=\\"0.9\\" numOctaves=\\"2\\" stitchTiles=\\"stitch\\"/></filter><rect width=\\"100%25\\" height=\\"100%25\\" filter=\\"url(%23n)\\"/></svg>")',
+              background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 60%)',
+              filter: 'blur(90px)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to bottom, transparent 60%, hsl(var(--background)) 100%)',
             }}
           />
         </div>
@@ -213,380 +202,235 @@ const PremiumPage = memo(function PremiumPage() {
         <motion.header
           className="sticky top-0 z-30 px-2 pt-4 pb-3 flex items-center justify-between"
           style={{
-            background: 'linear-gradient(to bottom, rgba(11,11,20,0.85) 0%, rgba(11,11,20,0.55) 100%)',
-            backdropFilter: 'blur(30px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+            background: 'hsl(var(--background) / 0.7)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
             paddingTop: 'max(16px, env(safe-area-inset-top))',
+            borderBottom: '0.5px solid hsl(var(--border) / 0.4)',
           }}
-          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={iosSpring}
+          initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={iosSpring}
         >
           <motion.button
             onClick={() => { haptics.light(); navigate(-1); }}
-            className="flex items-center gap-1 px-2 py-2 -ml-1"
-            style={{ color: '#c4b5fd' }}
-            whileTap={{ scale: 0.95, opacity: 0.7 }} transition={iosBounce}
+            className="flex items-center gap-1 px-2 py-2 -ml-1 text-primary"
+            whileTap={{ scale: 0.94, opacity: 0.7 }} transition={iosBounce}
           >
             <ChevronLeft className="w-5 h-5" />
-            <span className="text-[15px]" style={{ fontFamily: "'Work Sans', sans-serif", fontWeight: 500 }}>Back</span>
+            <span className="text-[15px] font-medium">Back</span>
           </motion.button>
-          <div
-            className="text-[10px] tracking-[0.3em] uppercase pr-3"
-            style={{ color: 'rgba(232,232,240,0.55)', fontWeight: 500 }}
-          >
-            Issue 01 · Premium
-          </div>
+          <span className="text-[15px] font-semibold">Premium</span>
+          <div className="w-[60px]" />
         </motion.header>
 
-        <main className="relative px-5 pt-2">
-          {/* ─── EDITORIAL HERO ─── */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ ...iosSpring, delay: 0.05 }}
-            className="pt-10 pb-10 relative"
-          >
-            {/* Eyebrow rule */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(196,181,253,0.5), transparent)' }} />
-              <span
-                className="text-[10px] tracking-[0.35em] uppercase"
-                style={{ color: '#c4b5fd', fontWeight: 600 }}
-              >
-                A Listening Manifesto
-              </span>
-              <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(196,181,253,0.5), transparent)' }} />
+        <main className="relative px-5">
+          {/* ─── HERO — equalizer signature ─── */}
+          <section className="pt-8 pb-8 text-center">
+            {/* Animated EQ bars — the music-app signature */}
+            <div className="flex items-end justify-center gap-1.5 h-16 mb-6">
+              {[0.45, 0.85, 0.6, 1, 0.5, 0.9, 0.7, 0.4, 0.95, 0.55, 0.8, 0.65].map((h, i) => (
+                <motion.span
+                  key={i}
+                  className="w-[5px] rounded-full"
+                  style={{
+                    background: 'linear-gradient(to top, hsl(var(--primary)), hsl(var(--primary) / 0.4))',
+                    height: `${h * 100}%`,
+                    boxShadow: '0 0 12px hsl(var(--primary) / 0.4)',
+                  }}
+                  animate={{ scaleY: [1, 0.35 + Math.random() * 0.65, 1] }}
+                  transition={{
+                    duration: 1.4 + (i % 4) * 0.2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: i * 0.08,
+                  }}
+                />
+              ))}
             </div>
 
-            {/* Magazine headline — Instrument Serif italic */}
-            <h1
-              className="text-center leading-[0.92] tracking-tight mb-6"
-              style={{
-                fontFamily: "'Instrument Serif', Georgia, serif",
-                fontSize: 'clamp(56px, 16vw, 84px)',
-                fontWeight: 400,
-                color: '#f2f0ff',
-              }}
-            >
-              The way music
-              <br />
-              <em
-                style={{
-                  fontStyle: 'italic',
-                  background: 'linear-gradient(105deg, #c4b5fd 0%, #67e8f9 50%, #c4b5fd 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                was meant
-              </em>
-              <br />
-              to be heard.
-            </h1>
-
-            <p
-              className="text-center mx-auto max-w-[300px] text-[14px] leading-[1.55]"
-              style={{ color: 'rgba(232,232,240,0.65)', fontWeight: 400 }}
-            >
-              Studio-grade audio. Zero interruptions.
-              <br />
-              Built for people who actually listen.
+            <p className="text-[11px] font-bold tracking-[0.28em] uppercase text-primary mb-3">
+              Universflow Premium
             </p>
-
-            {/* Byline-style trust row */}
-            <div className="flex items-center justify-center gap-4 mt-7 text-[10px] tracking-[0.18em] uppercase"
-              style={{ color: 'rgba(232,232,240,0.45)' }}
-            >
-              <span>UPI Secure</span>
-              <span style={{ color: '#c4b5fd' }}>•</span>
-              <span>Activates in minutes</span>
-              <span style={{ color: '#67e8f9' }}>•</span>
-              <span>Cancel anytime</span>
-            </div>
-          </motion.section>
+            <h1 className="text-[40px] leading-[1.05] font-bold tracking-tight mb-3 px-2">
+              Hear it the way<br />
+              <span className="text-primary">it was recorded.</span>
+            </h1>
+            <p className="text-[15px] leading-snug text-muted-foreground max-w-[320px] mx-auto">
+              Spatial audio, studio EQ, zero ads. Built for people who actually listen.
+            </p>
+          </section>
 
           {/* Active premium banner */}
           {isPremium && (
             <motion.section
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={iosSpring}
-              className="rounded-[28px] p-8 text-center relative overflow-hidden mb-10"
+              className="rounded-3xl p-7 text-center mb-8 relative overflow-hidden"
               style={{
-                background: 'linear-gradient(135deg, rgba(196,181,253,0.12) 0%, rgba(103,232,249,0.08) 100%)',
-                border: '0.5px solid rgba(196,181,253,0.35)',
+                background: 'linear-gradient(135deg, hsl(var(--primary) / 0.18), hsl(var(--primary) / 0.04))',
+                border: '0.5px solid hsl(var(--primary) / 0.4)',
               }}
             >
-              <Crown className="w-10 h-10 mx-auto mb-3" style={{ color: '#c4b5fd' }} fill="currentColor" />
-              <p
-                className="text-[32px] leading-none mb-2"
-                style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', color: '#f2f0ff' }}
-              >
-                You're Premium.
-              </p>
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center bg-primary/15">
+                <Crown className="w-7 h-7 text-primary" fill="currentColor" />
+              </div>
+              <p className="text-[22px] font-bold mb-1">You're Premium</p>
               {expiryText && (
-                <p className="text-[12px] tracking-[0.15em] uppercase" style={{ color: 'rgba(232,232,240,0.55)' }}>
+                <p className="text-[12px] tracking-[0.12em] uppercase text-muted-foreground">
                   Active until {expiryText}
                 </p>
               )}
               <button
                 onClick={handleUpgrade}
-                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[12px] tracking-[0.15em] uppercase"
-                style={{
-                  background: 'rgba(196,181,253,0.15)',
-                  color: '#c4b5fd',
-                  border: '0.5px solid rgba(196,181,253,0.3)',
-                  fontWeight: 600,
-                }}
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-semibold bg-primary text-primary-foreground"
               >
                 Extend membership
               </button>
             </motion.section>
           )}
 
-          {/* Pending payment banner */}
+          {/* Pending payment */}
           {!isPremium && pending && (
             <div className="mb-8">
               <PendingProgressBanner pending={pending} />
             </div>
           )}
 
-          {/* ─── PLAN SECTION ─── */}
+          {/* ─── PLAN PICKER — Apple Music-style horizontal cards ─── */}
           {!isPremium && !pending && (
             <motion.section
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ ...iosSpring, delay: 0.12 }}
-              className="mb-12"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ ...iosSpring, delay: 0.05 }}
+              className="mb-10"
             >
-              {/* Section masthead */}
-              <div className="flex items-baseline justify-between mb-5 px-1">
-                <div>
-                  <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: '#c4b5fd', fontWeight: 600 }}>
-                    Chapter I
-                  </p>
-                  <h2
-                    className="text-[34px] leading-[0.95]"
-                    style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff', fontWeight: 400 }}
-                  >
-                    Choose your <em style={{ fontStyle: 'italic', color: '#c4b5fd' }}>tempo</em>.
-                  </h2>
-                </div>
-                <span className="text-[10px] tracking-[0.2em] uppercase" style={{ color: 'rgba(232,232,240,0.4)' }}>
-                  03 plans
-                </span>
-              </div>
-
-              <div className="space-y-3">
+              <h2 className="text-[20px] font-bold mb-4 px-1">Choose your plan</h2>
+              <div className="space-y-2.5">
                 <PlanCard
-                  planId="bimonthly"
                   selected={selectedPlan === 'bimonthly'}
                   onSelect={() => { haptics.light(); setSelectedPlan('bimonthly'); }}
                   badge={`Save ${bimonthlySave}%`}
                   title="2 Months"
                   price={bimonthly}
                   perMonth={`₹${bimonthlyPerMo}/mo`}
-                  tagline="The sweet spot · 60 days"
+                  tagline="Most popular"
                   recommended
                 />
                 <PlanCard
-                  planId="quarterly"
                   selected={selectedPlan === 'quarterly'}
                   onSelect={() => { haptics.light(); setSelectedPlan('quarterly'); }}
                   badge={`Save ${quarterlySave}%`}
                   title="3 Months"
                   price={quarterly}
                   perMonth={`₹${quarterlyPerMo}/mo`}
-                  tagline="Best value · 90 days"
+                  tagline="Best value"
                 />
                 <PlanCard
-                  planId="monthly"
                   selected={selectedPlan === 'monthly'}
                   onSelect={() => { haptics.light(); setSelectedPlan('monthly'); }}
                   title="Monthly"
                   price={monthly}
                   perMonth="30 days"
-                  tagline="Try it for a month"
+                  tagline="Try it out"
                 />
               </div>
             </motion.section>
           )}
 
-          {/* ─── FEATURE EDITORIAL ─── */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ ...iosSpring, delay: 0.2 }}
-            className="mb-10"
-          >
-            <div className="mb-6 px-1">
-              <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: '#67e8f9', fontWeight: 600 }}>
-                Chapter II
-              </p>
-              <h2
-                className="text-[34px] leading-[0.95]"
-                style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff', fontWeight: 400 }}
-              >
-                Everything <em style={{ fontStyle: 'italic', color: '#67e8f9' }}>included</em>.
-              </h2>
-            </div>
-
-            {/* Featured spread — first feature gets hero treatment */}
-            {FEATURES[0] && (
-              <div
-                className="rounded-[24px] p-6 mb-3 relative overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(196,181,253,0.12) 0%, rgba(103,232,249,0.06) 100%)',
-                  border: '0.5px solid rgba(196,181,253,0.25)',
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: 'linear-gradient(135deg, #c4b5fd 0%, #67e8f9 100%)',
-                      boxShadow: '0 10px 30px -10px rgba(196,181,253,0.5)',
-                    }}
-                  >
-                    {(() => { const Icon = FEATURES[0].icon; return <Icon className="w-7 h-7" style={{ color: '#0b0b14' }} strokeWidth={2} />; })()}
-                  </div>
-                  <div className="flex-1 min-w-0 pt-1">
-                    <p className="text-[10px] tracking-[0.25em] uppercase mb-1.5" style={{ color: '#c4b5fd', fontWeight: 600 }}>
-                      Featured
-                    </p>
-                    <p
-                      className="text-[26px] leading-[1.05] mb-1.5"
-                      style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff' }}
-                    >
-                      {FEATURES[0].title}
-                    </p>
-                    <p className="text-[13.5px] leading-[1.5]" style={{ color: 'rgba(232,232,240,0.7)' }}>
-                      {FEATURES[0].desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Remaining features — magazine 2-column grid on small mobile gets staggered */}
-            <div className="space-y-2">
-              {FEATURES.slice(1).map((f, i) => (
-                <motion.article
-                  key={f.title}
-                  initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-30px' }}
-                  transition={{ delay: i * 0.03, ...iosSpring }}
-                  className="flex items-start gap-4 py-4 px-1 relative"
-                  style={{ borderTop: '0.5px solid rgba(196,181,253,0.12)' }}
-                >
-                  <div
-                    className="text-[10px] tabular-nums pt-1 w-6 shrink-0"
-                    style={{ color: 'rgba(232,232,240,0.4)', fontFamily: "'Work Sans', sans-serif", letterSpacing: '0.1em' }}
-                  >
-                    {String(i + 2).padStart(2, '0')}
-                  </div>
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: 'rgba(196,181,253,0.08)',
-                      border: '0.5px solid rgba(196,181,253,0.18)',
-                    }}
-                  >
-                    <f.icon className="w-4.5 h-4.5" style={{ color: '#c4b5fd', width: 18, height: 18 }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-[17px] leading-tight mb-1"
-                      style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff' }}
-                    >
-                      {f.title}
-                    </p>
-                    <p className="text-[12.5px] leading-snug" style={{ color: 'rgba(232,232,240,0.6)' }}>
-                      {f.desc}
-                    </p>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* Pull quote */}
-          <motion.blockquote
-            initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="my-10 px-2 text-center"
-          >
-            <p
-              className="text-[28px] leading-[1.15]"
-              style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic', color: '#f2f0ff' }}
+          {/* ─── FEATURES — clean rows, no fluff ─── */}
+          <section className="mb-10">
+            <h2 className="text-[20px] font-bold mb-4 px-1">What you get</h2>
+            <div
+              className="rounded-3xl overflow-hidden"
+              style={{
+                background: 'hsl(var(--card) / 0.6)',
+                border: '0.5px solid hsl(var(--border) / 0.5)',
+              }}
             >
-              <span style={{ color: '#c4b5fd' }}>"</span>
-              Most apps play music.
-              <br />
-              We tried to play it <em style={{ color: '#67e8f9' }}>properly</em>.
-              <span style={{ color: '#c4b5fd' }}>"</span>
-            </p>
-            <p className="text-[10px] tracking-[0.3em] uppercase mt-4" style={{ color: 'rgba(232,232,240,0.45)' }}>
-              — The Universflow Team
-            </p>
-          </motion.blockquote>
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <motion.div
+                    key={f.title}
+                    initial={{ opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: '-20px' }}
+                    transition={{ delay: i * 0.025, duration: 0.3 }}
+                    className="flex items-start gap-3.5 px-4 py-4"
+                    style={i > 0 ? { borderTop: '0.5px solid hsl(var(--border) / 0.4)' } : undefined}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'hsl(var(--primary) / 0.12)',
+                      }}
+                    >
+                      <Icon className="w-5 h-5 text-primary" strokeWidth={2} />
+                    </div>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <p className="text-[15px] font-semibold leading-tight mb-0.5">{f.title}</p>
+                      <p className="text-[12.5px] text-muted-foreground leading-snug">{f.desc}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Trust strip */}
+          <div className="flex items-center justify-center gap-3 text-[11px] text-muted-foreground mb-8">
+            <span className="inline-flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-primary" /> UPI Secure</span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+            <span>Activates in minutes</span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+            <span>Cancel anytime</span>
+          </div>
 
           {/* Redeem code link */}
           {!isPremium && !pending && (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-              className="text-center pt-2 pb-4"
-            >
+            <div className="text-center pb-4">
               <button
                 onClick={() => { haptics.light(); setShowRedeem(true); }}
-                className="inline-flex items-center gap-2 text-[12px] tracking-[0.2em] uppercase py-3 px-4"
-                style={{ color: '#c4b5fd', fontWeight: 600 }}
+                className="inline-flex items-center gap-2 text-[13px] font-semibold text-primary py-3 px-4"
               >
-                <Gift className="w-3.5 h-3.5" />
+                <Gift className="w-4 h-4" />
                 Have a code? Redeem
               </button>
-            </motion.div>
+            </div>
           )}
         </main>
 
-        {/* ─── Sticky bottom CTA bar ─── */}
+        {/* ─── Sticky bottom CTA ─── */}
         {!isPremium && !pending && settings && (
           <motion.div
             initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            transition={{ ...iosSpring, delay: 0.3 }}
+            transition={{ ...iosSpring, delay: 0.15 }}
             className="fixed bottom-[68px] left-0 right-0 z-40 px-4 pb-2 pointer-events-none"
             style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
           >
             <div
-              className="max-w-md mx-auto rounded-2xl p-3 pointer-events-auto flex items-center gap-3"
+              className="max-w-md mx-auto rounded-2xl p-3 pl-5 pointer-events-auto flex items-center gap-3"
               style={{
-                background: 'rgba(11,11,20,0.82)',
-                border: '0.5px solid rgba(196,181,253,0.25)',
-                backdropFilter: 'blur(30px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                boxShadow: '0 -20px 50px -10px rgba(0,0,0,0.6)',
+                background: 'hsl(var(--background) / 0.85)',
+                border: '0.5px solid hsl(var(--border))',
+                backdropFilter: 'blur(28px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                boxShadow: '0 -10px 40px -10px rgba(0,0,0,0.5)',
               }}
             >
-              <div className="min-w-0 flex-1 pl-2">
-                <p className="text-[9px] uppercase tracking-[0.25em]" style={{ color: 'rgba(232,232,240,0.5)' }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
                   {PLAN_LABEL[selectedPlan]}
                 </p>
-                <p
-                  className="text-[22px] leading-tight"
-                  style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff' }}
-                >
+                <p className="text-[22px] font-bold leading-tight tracking-tight">
                   ₹{selectedPrice}
                 </p>
               </div>
               <motion.button
                 onClick={handleUpgrade}
                 whileTap={{ scale: 0.96 }}
-                className="px-6 py-3.5 rounded-xl text-[13px] tracking-[0.15em] uppercase flex items-center gap-2"
-                style={{
-                  background: 'linear-gradient(135deg, #c4b5fd 0%, #67e8f9 100%)',
-                  color: '#0b0b14',
-                  fontWeight: 700,
-                  boxShadow: '0 15px 35px -10px rgba(196,181,253,0.55)',
-                }}
+                className="px-6 py-3.5 rounded-xl text-[15px] font-bold bg-primary text-primary-foreground flex items-center gap-2"
+                style={{ boxShadow: '0 10px 30px -8px hsl(var(--primary) / 0.5)' }}
               >
                 Subscribe
-                <Sparkles className="w-3.5 h-3.5" fill="currentColor" />
               </motion.button>
             </div>
           </motion.div>
@@ -614,7 +458,6 @@ const PremiumPage = memo(function PremiumPage() {
 // ─────────── Plan card ───────────
 
 interface PlanCardProps {
-  planId: PlanId;
   selected: boolean;
   onSelect: () => void;
   title: string;
@@ -632,96 +475,57 @@ const PlanCard = memo(function PlanCard({
     <motion.button
       onClick={onSelect}
       whileTap={{ scale: 0.99 }}
-      className="w-full text-left rounded-[20px] p-[1px] relative transition-colors"
+      className="w-full text-left rounded-2xl px-4 py-4 flex items-center gap-4 relative transition-colors"
       style={{
-        background: selected
-          ? 'linear-gradient(135deg, #c4b5fd 0%, #67e8f9 50%, #c4b5fd 100%)'
-          : recommended
-          ? 'linear-gradient(135deg, rgba(196,181,253,0.4), rgba(103,232,249,0.3))'
-          : 'rgba(196,181,253,0.12)',
-        boxShadow: selected
-          ? '0 18px 45px -18px rgba(196,181,253,0.5)'
-          : 'none',
+        background: selected ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card) / 0.6)',
+        border: selected
+          ? '1.5px solid hsl(var(--primary))'
+          : '0.5px solid hsl(var(--border) / 0.6)',
+        boxShadow: selected ? '0 8px 28px -10px hsl(var(--primary) / 0.4)' : 'none',
       }}
     >
       {recommended && (
         <div
-          className="absolute -top-2.5 left-5 px-2.5 py-1 rounded-full text-[8.5px] tracking-[0.22em] uppercase z-10 flex items-center gap-1"
-          style={{
-            background: 'linear-gradient(135deg, #c4b5fd 0%, #67e8f9 100%)',
-            color: '#0b0b14',
-            fontWeight: 700,
-            boxShadow: '0 6px 18px -4px rgba(196,181,253,0.5)',
-          }}
+          className="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-[9px] tracking-[0.15em] uppercase z-10 bg-primary text-primary-foreground font-bold"
         >
-          Editor's Pick
+          Popular
         </div>
       )}
 
+      {/* Radio */}
       <div
-        className="rounded-[19px] px-5 py-5 relative overflow-hidden flex items-center gap-4"
+        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
         style={{
-          background: selected
-            ? 'linear-gradient(135deg, rgba(196,181,253,0.14) 0%, rgba(11,11,20,0.95) 50%, rgba(103,232,249,0.1) 100%)'
-            : 'linear-gradient(135deg, rgba(20,20,32,0.85), rgba(11,11,20,0.95))',
+          border: selected ? 'none' : '1.5px solid hsl(var(--border))',
+          background: selected ? 'hsl(var(--primary))' : 'transparent',
         }}
       >
-        {/* Selection indicator — minimal radio dot */}
-        <div
-          className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-          style={{
-            border: selected ? 'none' : '1px solid rgba(196,181,253,0.35)',
-            background: selected ? 'linear-gradient(135deg, #c4b5fd, #67e8f9)' : 'transparent',
-          }}
-        >
-          {selected && <Check className="w-3 h-3" style={{ color: '#0b0b14' }} strokeWidth={3.5} />}
-        </div>
+        {selected && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3.5} />}
+      </div>
 
-        {/* Title & tagline */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <p
-              className="text-[20px] leading-none"
-              style={{ fontFamily: "'Instrument Serif', serif", color: '#f2f0ff' }}
+      {/* Title block */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-[16px] font-bold leading-none">{title}</p>
+          {badge && (
+            <span
+              className="text-[9.5px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded font-bold"
+              style={{
+                background: 'hsl(var(--primary) / 0.15)',
+                color: 'hsl(var(--primary))',
+              }}
             >
-              {title}
-            </p>
-            {badge && (
-              <span
-                className="text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5 rounded"
-                style={{
-                  background: 'rgba(103,232,249,0.12)',
-                  color: '#67e8f9',
-                  border: '0.5px solid rgba(103,232,249,0.3)',
-                  fontWeight: 600,
-                }}
-              >
-                {badge}
-              </span>
-            )}
-          </div>
-          <p className="text-[11.5px] mt-1 tracking-wide" style={{ color: 'rgba(232,232,240,0.5)' }}>
-            {tagline}
-          </p>
+              {badge}
+            </span>
+          )}
         </div>
+        <p className="text-[11.5px] text-muted-foreground mt-1">{tagline}</p>
+      </div>
 
-        {/* Price — serif numerals */}
-        <div className="text-right shrink-0">
-          <p
-            className="leading-none"
-            style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontSize: '32px',
-              color: '#f2f0ff',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            ₹{price}
-          </p>
-          <p className="text-[10px] mt-1 tracking-[0.1em] uppercase" style={{ color: 'rgba(232,232,240,0.45)' }}>
-            {perMonth}
-          </p>
-        </div>
+      {/* Price */}
+      <div className="text-right shrink-0">
+        <p className="text-[20px] font-bold leading-none tracking-tight">₹{price}</p>
+        <p className="text-[10px] mt-1 text-muted-foreground">{perMonth}</p>
       </div>
     </motion.button>
   );
