@@ -52,6 +52,19 @@ const Settings = () => {
     const s = readEq();
     return typeof s.playbackSpeed === 'number' ? s.playbackSpeed : 1;
   });
+  const [lockTheme, setLockTheme] = useState<LockScreenThemeId>(() => getStoredLockScreenTheme());
+
+  const handleLockTheme = (id: LockScreenThemeId, isLocked: boolean) => {
+    if (isLocked) {
+      toast.info('Animated lock screens are a Premium perk');
+      navigate('/premium');
+      return;
+    }
+    setLockTheme(id);
+    setStoredLockScreenTheme(id);
+    toast.success(`${LOCK_SCREEN_THEMES.find(t => t.id === id)?.label} lock screen applied`);
+  };
+
   
 
   useEffect(() => {
