@@ -14,7 +14,7 @@ import EqualizerModal from '@/components/EqualizerModal';
 
 import { applyTheme, type ThemeMode } from '@/lib/themeBoot';
 import SEOHead from '@/components/SEOHead';
-import { applyTheme as _noop } from '@/lib/themeBoot';
+
 
 
 const EQ_KEY = 'eq_settings';
