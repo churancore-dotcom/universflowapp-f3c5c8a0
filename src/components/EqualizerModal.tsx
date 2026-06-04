@@ -1,13 +1,11 @@
 import { useState, useCallback, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, RotateCcw, Volume2, Zap, Waves, Music2, Headphones, Globe, Radio, Disc3, Mic2, Home, Building2, Church, Trophy, Moon } from 'lucide-react';
+import { X, Sparkles, RotateCcw, Volume2, Zap, Waves, Music2, Headphones, Globe, Disc3, Mic2, Home, Building2, Church, Trophy } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { iosSpring } from '@/lib/animations';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
-import { usePremium } from '@/hooks/usePremium';
-import PremiumLockOverlay from './PremiumLockOverlay';
 import {
   bypassAudioElement,
   connectAudioElement,
@@ -126,18 +124,6 @@ function saveSettings(data: any) {
 
 const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   const { audioElement, currentSong } = usePlayer();
-  const { isPremium, isLoading: premiumLoading } = usePremium();
-  // Browser users get full EQ access. On native APK we still gate by premium
-  // because EQ processing is bypassed there for background-playback reliability.
-  const isNativeApk = (() => {
-    try {
-      // Lazy require keeps this safe on web bundles
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Capacitor } = require('@capacitor/core');
-      return Capacitor?.isNativePlatform?.() === true;
-    } catch { return false; }
-  })();
-  const eqAllowed = !isNativeApk || isPremium;
   const engineMode = useEngineState();
   const isConnected = engineMode === 'processed';
 
@@ -156,7 +142,6 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   // Only route through Web Audio while EQ/effects are active. This prevents
   // background/native playback from fighting expensive filters when EQ is off.
   useEffect(() => {
-    if (!eqAllowed) return;
     if (!audioElement) return;
     const active = hasActiveProcessing({ bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight });
     if (active) {
@@ -174,35 +159,35 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
       engineSetLateNight(false);
       audioElement.playbackRate = 1;
     }
-  }, [eqAllowed, audioElement, currentSong?.id, bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
+  }, [audioElement, currentSong?.id, bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
 
   // Push EQ band changes to the engine (smoothed, never rebuilds graph)
   useEffect(() => {
-    if (!eqAllowed || !audioElement || !hasActiveProcessing({ bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight })) return;
+    if (!audioElement || !hasActiveProcessing({ bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight })) return;
     engineResume();
     connectAudioElement(audioElement);
     engineSetBands(bands.map(b => b.gain), bassBoost);
-  }, [eqAllowed, bands, bassBoost, audioElement, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
+  }, [bands, bassBoost, audioElement, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
 
   useEffect(() => {
-    if (eqAllowed && studioSpace === 'off') engineSetReverb(reverb);
-  }, [eqAllowed, reverb, studioSpace]);
+    if (studioSpace === 'off') engineSetReverb(reverb);
+  }, [reverb, studioSpace]);
 
   useEffect(() => {
-    if (eqAllowed) engineSetStudioSpace(studioSpace);
-  }, [eqAllowed, studioSpace]);
+    engineSetStudioSpace(studioSpace);
+  }, [studioSpace]);
 
   useEffect(() => {
-    if (eqAllowed) engineSetSpatial(spatialAudio);
-  }, [eqAllowed, spatialAudio]);
+    engineSetSpatial(spatialAudio);
+  }, [spatialAudio]);
 
   useEffect(() => {
-    if (eqAllowed) engineSetLateNight(lateNight);
-  }, [eqAllowed, lateNight]);
+    engineSetLateNight(lateNight);
+  }, [lateNight]);
 
   useEffect(() => {
-    if (eqAllowed && audioElement) audioElement.playbackRate = playbackSpeed;
-  }, [eqAllowed, playbackSpeed, audioElement]);
+    if (audioElement) audioElement.playbackRate = playbackSpeed;
+  }, [playbackSpeed, audioElement]);
 
   // Persist
   useEffect(() => {
@@ -252,18 +237,6 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   }, []);
 
   if (!isOpen) return null;
-
-  // Premium gate
-  if (!premiumLoading && !eqAllowed) {
-    return (
-      <AnimatePresence>
-        <PremiumLockOverlay
-          title="Equalizer is Premium"
-          onClose={onClose}
-        />
-      </AnimatePresence>
-    );
-  }
 
   const speedMarks = [0.5, 1, 1.5, 2];
 
