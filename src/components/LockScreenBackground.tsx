@@ -82,7 +82,7 @@ const CachedBlurCover = memo(({ url }: { url: string | null | undefined }) => {
 });
 CachedBlurCover.displayName = 'CachedBlurCover';
 
-const LockScreenBackground = ({ themeId = 'vinyl', coverUrl }: Props) => {
+const LockScreenBackground = ({ themeId = 'classic', coverUrl }: Props) => {
   if (themeId === 'aurora') {
     return (
       <div className="absolute inset-0 overflow-hidden bg-black">
@@ -95,7 +95,8 @@ const LockScreenBackground = ({ themeId = 'vinyl', coverUrl }: Props) => {
 
   if (themeId === 'waves') {
     return (
-      <div className="absolute inset-0 overflow-hidden bg-[#0a0618]">
+      <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(180deg, hsl(220 28% 12%), hsl(235 28% 7%))' }}>
+        <CachedBlurCover url={coverUrl} />
         <svg
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 400 800"
@@ -128,20 +129,23 @@ const LockScreenBackground = ({ themeId = 'vinyl', coverUrl }: Props) => {
     );
   }
 
-  // vinyl (default) and classic both use the cached blurred-cover layer.
-  // The vinyl theme tints toward deep blue (matches screenshot), classic stays violet.
-  const bgGradient =
-    themeId === 'vinyl'
-      ? 'linear-gradient(180deg, #142a5e 0%, #0a1430 60%, #060818 100%)'
-      : 'linear-gradient(180deg, #2a1248 0%, #170828 60%, #0a0414 100%)';
-  const tint =
-    themeId === 'vinyl'
-      ? 'radial-gradient(120% 80% at 50% 35%, rgba(40,80,200,0.42), transparent 70%)'
-      : 'radial-gradient(120% 80% at 50% 35%, rgba(80,30,140,0.55), transparent 70%)';
+  if (themeId === 'glow') {
+    return (
+      <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(180deg, hsl(211 40% 18%), hsl(224 42% 8%))' }}>
+        <CachedBlurCover url={coverUrl} />
+        <div className="lockfx-glow" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/80" />
+      </div>
+    );
+  }
+
+  const bgGradient = 'linear-gradient(180deg, hsl(215 34% 18%) 0%, hsl(224 36% 11%) 58%, hsl(230 38% 6%) 100%)';
+  const tint = 'radial-gradient(120% 80% at 50% 35%, rgba(90,120,170,0.34), transparent 70%)';
 
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ background: bgGradient }}>
       <CachedBlurCover url={coverUrl} />
+      <div className="lockfx-classic-drift" aria-hidden />
       <div aria-hidden className="absolute inset-0" style={{ background: tint }} />
       <div
         aria-hidden
