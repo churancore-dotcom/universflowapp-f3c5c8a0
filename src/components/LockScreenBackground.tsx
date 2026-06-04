@@ -85,7 +85,8 @@ CachedBlurCover.displayName = 'CachedBlurCover';
 const LockScreenBackground = ({ themeId = 'classic', coverUrl }: Props) => {
   if (themeId === 'aurora') {
     return (
-      <div className="absolute inset-0 overflow-hidden bg-black">
+      <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(180deg, hsl(216 34% 15%), hsl(236 28% 7%))' }}>
+        <CachedBlurCover url={coverUrl} />
         <div className="lockfx-aurora-a" />
         <div className="lockfx-aurora-b" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
