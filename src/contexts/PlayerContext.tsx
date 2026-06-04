@@ -644,7 +644,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       pool.forEach((s) => autoMixSeenRef.current.add(s.id));
 
       if (pool.length > 0) {
-        setQueueState((prev) => [...prev, ...pool]);
+        setQueueState((prev) => {
+          const next = [...prev, ...pool];
+          queueRef.current = next;
+          return next;
+        });
       }
       return pool;
     } catch (e) {
@@ -1631,7 +1635,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const addToQueue = useCallback((song: Song) => {
-    setQueueState(prev => [...prev, song]);
+    setQueueState(prev => {
+      const next = [...prev, song];
+      queueRef.current = next;
+      return next;
+    });
   }, []);
 
   const toggleShuffle = useCallback(() => {
