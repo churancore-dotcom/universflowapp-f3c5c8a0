@@ -87,8 +87,10 @@ const LockScreenBackground = ({ coverUrl, isPlaying }: Props) => {
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ background: bgGradient }}>
       <CachedBlurCover url={coverUrl} />
+      <div className="lockfx-ios-aurora" aria-hidden style={{ animationPlayState: playState }} />
       <div className="lockfx-ios-orb" aria-hidden style={{ animationPlayState: playState }} />
       <div className="lockfx-ios-orb-2" aria-hidden style={{ animationPlayState: playState }} />
+      <div className="lockfx-ios-halo" aria-hidden style={{ animationPlayState: playState }} />
       <div className="lockfx-ios-beam" aria-hidden style={{ animationPlayState: playState }} />
       <div className="lockfx-ios-sheen" aria-hidden style={{ animationPlayState: playState }} />
       <div className="lockfx-ios-grain" aria-hidden />

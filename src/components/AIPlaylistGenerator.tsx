@@ -99,17 +99,8 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
     return () => { cancelled = true; };
   }, [isOpen, user]);
 
-  if (isOpen && !premiumLoading && !isPremium) {
-    return (
-      <AnimatePresence>
-        <PremiumLockOverlay
-          title="Auto Generate"
-          description="Pick a song and we'll create a saved playlist tuned to your taste. Available with Premium."
-          onClose={onClose}
-        />
-      </AnimatePresence>
-    );
-  }
+  // Auto Generate is open to every signed-in user — no premium gate.
+  void isPremium; void premiumLoading; void PremiumLockOverlay;
 
   const startMix = async () => {
     if (!user || !seedId) {
@@ -250,9 +241,10 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
       playSong(queue[0], null, queue);
       toast.success(`Playlist created · ${queue.length} tracks`);
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Playlist generation failed:', e);
-      toast.error('Could not create playlist. Try again.');
+      const msg = e?.message || e?.error_description || 'Unknown error';
+      toast.error(`Could not create playlist: ${msg}`);
     } finally {
       setIsStarting(false);
     }
