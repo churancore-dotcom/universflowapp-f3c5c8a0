@@ -697,101 +697,40 @@ html.light [style*="boxShadow: 0 6px 24px rgba(0,0,0,0.4)"] {
   50% { background-position: 100% 50%; }
 }
 
-/* ===== Lock-screen FX (CSS-only, GPU-friendly) =====
-   Blur ≤60px, opacity ≤0.45 on animated layers; never under backdrop-blur. */
-.lockfx-aurora-a,
-.lockfx-aurora-b {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(60px);
-  opacity: 0.45;
-  will-change: transform;
-  transform: translateZ(0);
-}
-.lockfx-aurora-a {
-  width: 70vw; height: 70vw; max-width: 480px; max-height: 480px;
-  left: -10vw; top: -10vw;
-  background: hsl(198 92% 58%);
-  animation: lockfxAuroraA 24s ease-in-out infinite alternate;
-}
-.lockfx-aurora-b {
-  width: 80vw; height: 80vw; max-width: 540px; max-height: 540px;
-  right: -20vw; bottom: -20vw;
-  background: hsl(154 72% 45%);
-  animation: lockfxAuroraB 28s ease-in-out infinite alternate;
-}
-@keyframes lockfxAuroraA {
-  0%   { transform: translate3d(0,0,0) scale(1); }
-  100% { transform: translate3d(10vw, 14vh, 0) scale(1.1); }
-}
-@keyframes lockfxAuroraB {
-  0%   { transform: translate3d(0,0,0) scale(1); }
-  100% { transform: translate3d(-8vw, -12vh, 0) scale(1.08); }
-}
-
-.lockfx-wave-path-1 { transform-origin: center; animation: lockfxWave1 12s ease-in-out infinite alternate; will-change: transform; }
-.lockfx-wave-path-2 { transform-origin: center; animation: lockfxWave2 14s ease-in-out infinite alternate; will-change: transform; }
-@keyframes lockfxWave1 {
-  0%   { transform: translateY(0); }
-  100% { transform: translateY(-14px); }
-}
-@keyframes lockfxWave2 {
-  0%   { transform: translateY(0); }
-  100% { transform: translateY(10px); }
-}
-
-.lockfx-glow {
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 60%, hsl(194 95% 62% / 0.38) 0%, hsl(160 74% 42% / 0.18) 35%, transparent 70%);
-  will-change: opacity;
-  transform: translateZ(0);
-  animation: lockfxGlow 6s ease-in-out infinite;
-}
-@keyframes lockfxGlow {
-  0%, 100% { opacity: 0.7; }
-  50%      { opacity: 1; }
-}
-
-/* Vinyl theme — spinning disc behind the cover. Pure transform animation. */
-@keyframes lockfxSpin {
-  from { transform: translateZ(0) translateY(-50%) rotate(0deg); }
-  to   { transform: translateZ(0) translateY(-50%) rotate(360deg); }
-}
-
+/* ===== Lock-screen FX: single iOS-style animated background ===== */
 @keyframes lockfxFadeIn {
   from { opacity: 0; }
   to   { opacity: 0.7; }
 }
 
-.lockfx-classic-drift {
+.lockfx-ios-sheen {
   position: absolute;
-  inset: -18%;
+  inset: -16%;
   background:
-    radial-gradient(circle at 26% 22%, hsl(202 80% 60% / 0.18), transparent 34%),
-    radial-gradient(circle at 74% 68%, hsl(151 70% 48% / 0.12), transparent 36%);
+    radial-gradient(circle at 24% 18%, hsl(0 0% 100% / 0.16), transparent 32%),
+    radial-gradient(circle at 76% 72%, hsl(0 0% 100% / 0.08), transparent 34%);
   will-change: transform, opacity;
   transform: translateZ(0);
-  animation: lockfxClassicDrift 18s ease-in-out infinite alternate;
+  animation: lockfxIosSheen 16s ease-in-out infinite alternate;
 }
 
-@keyframes lockfxClassicDrift {
-  0%   { transform: translate3d(-2%, -1%, 0) scale(1); opacity: 0.65; }
-  100% { transform: translate3d(2%, 2%, 0) scale(1.05); opacity: 0.9; }
+.lockfx-ios-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(115deg, transparent 0%, hsl(0 0% 100% / 0.08) 46%, transparent 54%),
+    radial-gradient(circle at 50% 20%, hsl(0 0% 100% / 0.08), transparent 34%);
+  transform: translateZ(0);
 }
 
-.lockfx-cover-float {
-  animation: lockfxCoverFloat 7s ease-in-out infinite;
-}
-
-@keyframes lockfxCoverFloat {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%      { transform: translate3d(0, -6px, 0); }
+@keyframes lockfxIosSheen {
+  0%   { transform: translate3d(-2%, -1%, 0) scale(1); opacity: 0.55; }
+  100% { transform: translate3d(2%, 2%, 0) scale(1.05); opacity: 0.85; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lockfx-aurora-a, .lockfx-aurora-b,
-  .lockfx-wave-path-1, .lockfx-wave-path-2,
-  .lockfx-glow, .lockfx-classic-drift, .lockfx-cover-float { animation: none !important; }
+  .lockfx-ios-sheen { animation: none !important; }
 }
 
 
