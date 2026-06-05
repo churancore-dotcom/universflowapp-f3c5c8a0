@@ -99,17 +99,8 @@ const AIPlaylistGenerator = memo(({ isOpen, onClose, onPlaylistCreated }: AIPlay
     return () => { cancelled = true; };
   }, [isOpen, user]);
 
-  if (isOpen && !premiumLoading && !isPremium) {
-    return (
-      <AnimatePresence>
-        <PremiumLockOverlay
-          title="Auto Generate"
-          description="Pick a song and we'll create a saved playlist tuned to your taste. Available with Premium."
-          onClose={onClose}
-        />
-      </AnimatePresence>
-    );
-  }
+  // Auto Generate is open to every signed-in user — no premium gate.
+  void isPremium; void premiumLoading; void PremiumLockOverlay;
 
   const startMix = async () => {
     if (!user || !seedId) {
