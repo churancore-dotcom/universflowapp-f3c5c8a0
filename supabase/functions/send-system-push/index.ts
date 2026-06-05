@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
 
     const { data: tokenRows } = await admin
       .from("device_tokens")
