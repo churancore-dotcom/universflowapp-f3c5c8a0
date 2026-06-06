@@ -81,7 +81,7 @@ const fetchHomeSongs = async (): Promise<Song[]> => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { currentSong, isPlaying, togglePlayPause, playSong } = usePlayer();
+  const { currentSong, isPlaying, togglePlay, playSong } = usePlayer();
   const { cachedSongs, updateCache } = useSongCache();
   const { isOffline, user } = useAuth();
   const { downloads } = useDownloads();
