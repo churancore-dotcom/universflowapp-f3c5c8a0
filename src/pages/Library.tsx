@@ -15,6 +15,7 @@ import LikeButton from '@/components/LikeButton';
 import DownloadButton from '@/components/DownloadButton';
 import { TabTransition } from '@/components/PageTransition';
 import SEOHead from '@/components/SEOHead';
+import RoseHero from '@/components/RoseHero';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LibrarySkeleton, LibraryArtistsSkeleton } from '@/components/PageSkeletons';
 import PlaylistCover from '@/components/PlaylistCover';
