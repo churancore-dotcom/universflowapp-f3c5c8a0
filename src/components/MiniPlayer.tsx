@@ -151,13 +151,11 @@ const MiniPlayer = memo(function MiniPlayer() {
         }}
       >
         <motion.div
-          className="rounded-2xl overflow-hidden relative touch-manipulation"
+          className="rounded-3xl overflow-hidden relative touch-manipulation"
           style={{
-            background: 'rgba(28, 28, 30, 0.85)',
-            backdropFilter: 'blur(40px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
-            border: '0.5px solid rgba(255, 255, 255, 0.10)',
+            background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(18 100% 82%) 100%)',
+            boxShadow: '0 12px 40px -10px hsl(var(--primary) / 0.45)',
+            border: '0.5px solid hsl(0 0% 100% / 0.16)',
           }}
           drag
           dragDirectionLock
@@ -169,6 +167,20 @@ const MiniPlayer = memo(function MiniPlayer() {
           onClick={handleExpand}
           whileTap={{ scale: isDragging ? 1 : 0.99 }}
         >
+          {currentSong.cover_url && (
+            <img
+              src={currentSong.cover_url}
+              alt=""
+              aria-hidden
+              className="absolute inset-y-0 right-0 h-full w-2/3 object-cover pointer-events-none"
+              style={{
+                filter: 'blur(16px) saturate(140%)',
+                opacity: 0.42,
+                WebkitMaskImage: 'linear-gradient(to left, #000 22%, transparent 100%)',
+                maskImage: 'linear-gradient(to left, #000 22%, transparent 100%)',
+              }}
+            />
+          )}
           {/* Swipe hints */}
           {isSwipingLeft && (
             <div 
@@ -192,15 +204,15 @@ const MiniPlayer = memo(function MiniPlayer() {
           )}
 
           {/* Progress bar - smooth transition */}
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10 overflow-hidden rounded-t-xl">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-black/10 overflow-hidden rounded-t-xl z-10">
             <motion.div
-              className="h-full bg-rose-500"
+              className="h-full bg-black"
               style={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.3, ease: "linear" }}
             />
           </div>
 
-          <div className="flex items-center gap-3 p-2">
+          <div className="relative z-10 flex items-center gap-3 p-2">
             {/* Album Art with crossfade */}
             <div className="relative w-12 h-12 flex-shrink-0">
               <AnimatePresence mode="popLayout" initial={false}>
@@ -240,8 +252,8 @@ const MiniPlayer = memo(function MiniPlayer() {
                   exit="exit"
                   className="absolute inset-0 flex flex-col justify-center"
                 >
-                  <p
-                    className="font-semibold text-[14px] text-white leading-tight pr-1"
+                    <p
+                    className="font-bold text-[14px] text-black leading-tight pr-1"
                     style={{
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
@@ -251,7 +263,7 @@ const MiniPlayer = memo(function MiniPlayer() {
                   >
                     {currentSong.title}
                   </p>
-                  <p className="text-[12px] text-white/60 truncate mt-0.5 pr-1">
+                  <p className="text-[12px] text-black/60 truncate mt-0.5 pr-1">
                     {currentSong.artist}
                   </p>
                 </motion.div>
