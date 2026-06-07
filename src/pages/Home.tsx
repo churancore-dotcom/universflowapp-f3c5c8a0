@@ -343,7 +343,7 @@ const Home = () => {
               {/* Live admin announcement banner */}
               <AnnouncementBanner />
               {/* New Bento Hero — Continue Listening + quick tiles */}
-              {!isOffline && allSongs.length > 0 && <HomeBento songs={allSongs} />}
+              {!isOffline && <HomeBento songs={allSongs} />}
 
               {/* Online-only discovery sections — hidden when offline */}
               {!isOffline && (
