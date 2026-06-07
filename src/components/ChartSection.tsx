@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Flame, Loader2, Music, Sparkles, TrendingUp } from 'lucide-react';
+import { Flame, Loader2, Music, Disc3, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Song, usePlayer } from '@/contexts/PlayerContext';
@@ -18,7 +18,7 @@ interface Props {
 const META: Record<ChartType, { title: string; Icon: typeof Flame; color: string }> = {
   trending: { title: 'Trending Now',  Icon: TrendingUp, color: '#FF2D55' },
   viral:    { title: 'Viral',         Icon: Flame,      color: '#FF6B2D' },
-  latest:   { title: 'New Releases',  Icon: Sparkles,   color: '#5AC8FA' },
+  latest:   { title: 'New Releases',  Icon: Disc3,      color: '#5AC8FA' },
 };
 
 function detectFallbackCountry(): string {

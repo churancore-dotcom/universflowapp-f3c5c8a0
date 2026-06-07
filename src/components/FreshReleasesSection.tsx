@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Play } from 'lucide-react';
+import { Disc3, Play } from 'lucide-react';
 import { Song, usePlayer } from '@/contexts/PlayerContext';
 import OptimizedImage from './OptimizedImage';
 import { triggerHaptic } from '@/hooks/useHaptics';
@@ -44,7 +44,7 @@ const FreshReleasesSection = memo(({ songs }: Props) => {
             className="w-9 h-9 rounded-3xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #785aff, #00d4ff)' }}
           >
-            <Sparkles className="w-4 h-4 text-white" />
+            <Disc3 className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-[16px] font-bold tracking-tight text-foreground">Fresh Releases</h2>
