@@ -9,7 +9,7 @@ import { usePlayer, Song } from '@/contexts/PlayerContext';
 import { useDownloads } from '@/contexts/DownloadContext';
 import BottomNav from '@/components/BottomNav';
 import CreatePlaylistModal from '@/components/CreatePlaylistModal';
-import AIPlaylistGenerator from '@/components/AIPlaylistGenerator';
+
 import FollowedArtistSongsSection from '@/components/FollowedArtistSongsSection';
 import LikeButton from '@/components/LikeButton';
 import DownloadButton from '@/components/DownloadButton';
