@@ -540,7 +540,7 @@ const Library = () => {
 
         <BottomNav />
         {showCreatePlaylist && <CreatePlaylistModal isOpen={showCreatePlaylist} onClose={() => setShowCreatePlaylist(false)} onCreated={() => queryClient.invalidateQueries({ queryKey: libraryQueryKey })} />}
-        {showAIPlaylist && <AIPlaylistGenerator isOpen={showAIPlaylist} onClose={() => setShowAIPlaylist(false)} onPlaylistCreated={() => { setActiveTab('playlists'); queryClient.invalidateQueries({ queryKey: libraryQueryKey }); }} />}
+        
       </div>
     </TabTransition>
   );
