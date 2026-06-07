@@ -272,7 +272,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.8 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <Shuffle className={`w-[16px] h-[16px] ${shuffle ? 'text-white' : 'text-white/35'}`} />
+                    <Shuffle className={`w-[16px] h-[16px] ${shuffle ? 'text-black' : 'text-black/35'}`} />
                   </motion.button>
 
                   <motion.button
@@ -281,12 +281,12 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.82 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <SkipBack className="w-[22px] h-[22px] text-white" fill="white" />
+                    <SkipBack className="w-[22px] h-[22px] text-black" fill="black" />
                   </motion.button>
 
                   <motion.button
                     onClick={togglePlay}
-                    className="w-[56px] h-[56px] rounded-full bg-white/95 flex items-center justify-center shadow-lg"
+                    className="w-[56px] h-[56px] rounded-full bg-black flex items-center justify-center shadow-lg"
                     whileTap={{ scale: 0.88 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
@@ -299,7 +299,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                           exit={{ scale: 0.5, opacity: 0 }}
                           transition={{ duration: 0.15 }}
                         >
-                          <Pause className="w-[26px] h-[26px] text-black" fill="black" />
+                          <Pause className="w-[26px] h-[26px] text-white" fill="white" />
                         </motion.div>
                       ) : (
                         <motion.div
@@ -309,7 +309,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                           exit={{ scale: 0.5, opacity: 0 }}
                           transition={{ duration: 0.15 }}
                         >
-                          <Play className="w-[26px] h-[26px] text-black ml-0.5" fill="black" />
+                          <Play className="w-[26px] h-[26px] text-white ml-0.5" fill="white" />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -321,7 +321,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.82 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <SkipForward className="w-[22px] h-[22px] text-white" fill="white" />
+                    <SkipForward className="w-[22px] h-[22px] text-black" fill="black" />
                   </motion.button>
 
                   <motion.button
@@ -331,9 +331,9 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
                     {repeat === 'one' ? (
-                      <Repeat1 className="w-[16px] h-[16px] text-white" />
+                      <Repeat1 className="w-[16px] h-[16px] text-black" />
                     ) : (
-                      <Repeat className={`w-[16px] h-[16px] ${repeat !== 'off' ? 'text-white' : 'text-white/35'}`} />
+                      <Repeat className={`w-[16px] h-[16px] ${repeat !== 'off' ? 'text-black' : 'text-black/35'}`} />
                     )}
                   </motion.button>
                 </div>
