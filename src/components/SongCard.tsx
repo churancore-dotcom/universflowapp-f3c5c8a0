@@ -59,7 +59,7 @@ const SongCard = memo(({ song, index = 0, sectionSongs }: SongCardProps) => {
     >
       {/* Album Art Container */}
       <motion.div
-        className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
+        className="relative aspect-square rounded-3xl overflow-hidden cursor-pointer"
         onClick={handleClick}
         whileTap={{ scale: 0.95 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -79,7 +79,7 @@ const SongCard = memo(({ song, index = 0, sectionSongs }: SongCardProps) => {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/30 via-accent/20 to-muted flex items-center justify-center">
-            <Play className="w-10 h-10 text-foreground/20" />
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 via-accent/10 to-transparent" />
           </div>
         )}
 

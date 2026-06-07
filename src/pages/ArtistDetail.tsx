@@ -321,7 +321,7 @@ const ArtistDetail = () => {
                 return (
                   <motion.div
                     key={song.id}
-                    className={`flex items-center gap-3 p-3 rounded-2xl transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-3xl transition-all ${
                       isActive ? 'bg-primary/10' : 'active:bg-white/5'
                     }`}
                     initial={{ opacity: 0, x: -20 }}
@@ -355,7 +355,7 @@ const ArtistDetail = () => {
                         {song.cover_url ? (
                           <img src={song.cover_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <Music className="w-5 h-5 text-muted-foreground" />
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">

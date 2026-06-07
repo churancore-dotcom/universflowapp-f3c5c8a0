@@ -6,6 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { setLockscreenOpen } from '@/lib/lockscreenState';
 import LockScreenBackground from '@/components/LockScreenBackground';
 import LockScreenArtwork from '@/components/LockScreenArtwork';
+import { getEQPresetLabel, useEQSettings } from '@/lib/eqSettings';
 import {
   Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX,
   Shuffle, Repeat, Repeat1, Lock
@@ -69,6 +70,8 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
     setVolume, toggleShuffle, toggleRepeat, seek,
   } = usePlayer();
   const { progress, duration } = usePlayerProgress();
+  const eqSettings = useEQSettings();
+  const eqLabel = getEQPresetLabel(eqSettings);
 
   const [time, setTime] = useState(new Date());
   const dragY = useMotionValue(0);
@@ -224,7 +227,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                           {currentSong.title}
                         </h3>
                         <p className="text-[13px] text-black/55 truncate leading-tight mt-0.5">
-                          {currentSong.artist}
+                          {currentSong.artist} · EQ {eqLabel.toUpperCase()}
                         </p>
                       </motion.div>
                     </AnimatePresence>

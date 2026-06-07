@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Music, X, Globe, Radio, Loader2, Clock, Trash2 } from 'lucide-react';
 import { usePlayer, Song } from '@/contexts/PlayerContext';
 import { useDownloads } from '@/contexts/DownloadContext';
@@ -12,7 +13,7 @@ import SEOHead from '@/components/SEOHead';
 import RoseHero from '@/components/RoseHero';
 import { Input } from '@/components/ui/input';
 import { SearchSkeleton } from '@/components/PageSkeletons';
-import { prefetchIndexedTrack, searchIndexedTracks, getTagTopTracks, searchYouTubeMusicTracks, type IndexedTrack } from '@/lib/musicIndexer';
+import { prefetchIndexedTrack, searchIndexedTracks, getTagTopTracks, searchYouTubeMusicTracks, searchArtistDirectory, type IndexedArtistInfo, type IndexedTrack } from '@/lib/musicIndexer';
 import { searchSongsAsTracks as searchJioSaavnTracks } from '@/lib/jiosaavn';
 import { isCatalogSongId } from '@/lib/songSupport';
 import { detectMoodAndLanguage } from '@/lib/moodKeywords';
@@ -118,6 +119,7 @@ function rankAndDedupeResults(query: string, youtube: IndexedTrack[], literal: I
 const Search = () => {
   const [query, setQuery] = useState('');
   const [indexedResults, setIndexedResults] = useState<IndexedTrack[]>([]);
+  const [artistResults, setArtistResults] = useState<IndexedArtistInfo[]>([]);
   const [searching, setSearching] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [source, setSource] = useState<SearchSource>('all');
@@ -126,6 +128,7 @@ const Search = () => {
   const [hiddenResults, setHiddenResults] = useState<HiddenSearchEntry[]>(() => loadHiddenResults());
   const { playSong, currentSong, isPlaying } = usePlayer();
   const { getDownloadedUrl } = useDownloads();
+  const navigate = useNavigate();
 
   // Refresh history snapshot whenever the currently playing song changes
   useEffect(() => {
@@ -137,6 +140,7 @@ const Search = () => {
 
     if (trimmedQuery.length < 2) {
       setIndexedResults([]);
+      setArtistResults([]);
       setSearching(false);
       return;
     }
@@ -168,7 +172,8 @@ const Search = () => {
         const youtubeJob = searchYouTubeMusicTracks(smartQuery, 120);
         const saavnJob = searchJioSaavnTracks(trimmedQuery, 60).catch(() => [] as IndexedTrack[]);
 
-        const [youtube, literal, saavn, ...tagSets] = await Promise.all([youtubeJob, literalJob, saavnJob, ...tagJobs]);
+        const artistJob = searchArtistDirectory(trimmedQuery, 30);
+        const [youtube, literal, saavn, artists, ...tagSets] = await Promise.all([youtubeJob, literalJob, saavnJob, artistJob, ...tagJobs]);
         if (cancelled) return;
 
         const literalMerged = [...saavn, ...literal];
@@ -177,10 +182,11 @@ const Search = () => {
           .slice(0, 300);
 
         setCached(SEARCH_CACHE_NAMESPACE, trimmedQuery, merged);
+        setArtistResults(artists.filter((artist) => !!artist.image_url || normalizeText(artist.name).includes(normalizeText(trimmedQuery))).slice(0, 30));
         setIndexedResults(merged);
         setSearchHistory(getSongHistory());
       } catch {
-        if (!cancelled) setIndexedResults([]);
+        if (!cancelled) { setIndexedResults([]); setArtistResults([]); }
       } finally {
         if (!cancelled) setSearching(false);
       }
@@ -199,8 +205,21 @@ const Search = () => {
   }, [indexedResults]);
 
   const libraryResults: Song[] = [];
+  const hasQuery = query.length > 1;
 
+  const artistNameSearch = hasQuery && artistResults.some((artist) => {
+    const artistName = normalizeText(artist.name);
+    const q = normalizeText(query);
+    return artistName === q || artistName.includes(q) || q.includes(artistName);
+  });
   const visibleIndexedResults = source === 'all' || source === 'indexer' ? indexedResults : [];
+  const displayedIndexedResults = artistNameSearch
+    ? visibleIndexedResults.filter((track) => {
+        const artist = normalizeText(track.artist);
+        const q = normalizeText(query);
+        return artist.includes(q) || artistResults.some((result) => artist.includes(normalizeText(result.name)) || normalizeText(result.name).includes(artist));
+      })
+    : visibleIndexedResults;
 
   const handleHideIndexed = useCallback((track: IndexedTrack) => {
     hideSearchTrack(track);
@@ -220,7 +239,7 @@ const Search = () => {
       duration: track.duration,
       source: 'indexed',
     };
-    playSong(song, undefined, visibleIndexedResults.map((item) => ({
+    playSong(song, undefined, displayedIndexedResults.map((item) => ({
       id: item.id,
       title: item.title,
       artist: item.artist,
@@ -230,9 +249,7 @@ const Search = () => {
       duration: item.duration,
       source: 'indexed' as const,
     })));
-  }, [playSong, visibleIndexedResults]);
-
-  const hasQuery = query.length > 1;
+  }, [playSong, displayedIndexedResults]);
 
   return (
     <TabTransition>
@@ -421,14 +438,30 @@ const Search = () => {
           {searching ? <SearchSkeleton /> : (
             <>
               {/* Indexed stream results */}
-              {visibleIndexedResults.length > 0 && (
+              {artistResults.length > 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+                  <h2 className="text-sm font-bold mb-3">Artists · {artistResults.length} results</h2>
+                  <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+                    {artistResults.map((artist) => (
+                      <button key={artist.name} type="button" onClick={() => navigate(`/artists?focus=${encodeURIComponent(artist.name)}`)} className="w-24 flex-shrink-0 text-center active:scale-[0.96] transition-transform">
+                        <div className="w-20 h-20 mx-auto mb-2 rounded-full overflow-hidden bg-card border border-white/10">
+                          {artist.image_url && <img src={artist.image_url} alt={artist.name} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />}
+                        </div>
+                        <p className="text-[12px] font-bold text-foreground truncate">{artist.name}</p>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {displayedIndexedResults.length > 0 && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={libraryResults.length > 0 ? 'mt-6' : ''}>
                   <h2 className="text-sm font-bold mb-3 flex items-center gap-1.5">
                     <Radio className="w-4 h-4 text-primary" />
-                    Worldwide Songs · {visibleIndexedResults.length} results
+                    Worldwide Songs · {displayedIndexedResults.length} results
                   </h2>
                   <div className="space-y-1">
-                    {visibleIndexedResults.map((track, i) => {
+                    {displayedIndexedResults.map((track, i) => {
                       const isActive = currentSong?.id === track.id;
                       const isResolving = resolvingId === track.id;
                       return (
@@ -490,7 +523,7 @@ const Search = () => {
               )}
 
               {/* No results */}
-              {query.length > 1 && !searching && libraryResults.length === 0 && visibleIndexedResults.length === 0 && (
+              {query.length > 1 && !searching && libraryResults.length === 0 && displayedIndexedResults.length === 0 && artistResults.length === 0 && (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.06)' }}>

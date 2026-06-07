@@ -148,7 +148,7 @@ const ChartSection = memo(function ChartSection({ chartType, perCountry = false,
                 onClick={() => handleTap(i)}
                 className="w-32 flex-shrink-0 text-left active:scale-[0.96] transition-transform"
               >
-                <div className={`relative mb-2 aspect-square overflow-hidden rounded-2xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
+                <div className={`relative mb-2 aspect-square overflow-hidden rounded-3xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
                   {track.cover_url ? (
                     <img src={track.cover_url} alt={`${track.title} cover`} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   ) : (

@@ -109,7 +109,7 @@ const GlobalTopTracksSection = () => {
           <Sparkles className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-bold text-foreground">Top 30 from Your Artists</h2>
         </div>
-        <div className="rounded-2xl border border-border/50 bg-card/50 p-5 text-center">
+        <div className="rounded-3xl border border-border/50 bg-card/50 p-5 text-center">
           <p className="text-sm text-foreground/90 font-semibold mb-1">Follow artists to unlock this rail</p>
           <p className="text-xs text-muted-foreground mb-3">We'll surface their hottest tracks here.</p>
           <Link to="/artists" className="inline-block px-4 py-2 rounded-full text-xs font-bold bg-primary text-primary-foreground">Discover artists</Link>
@@ -128,7 +128,7 @@ const GlobalTopTracksSection = () => {
         <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="w-40 flex-shrink-0 rounded-3xl border border-border/50 bg-card/60 p-3 animate-pulse">
-              <div className="mb-3 aspect-square rounded-2xl bg-muted/60" />
+              <div className="mb-3 aspect-square rounded-3xl bg-muted/60" />
               <div className="h-3 rounded bg-muted/60 mb-2" />
               <div className="h-3 w-2/3 rounded bg-muted/40" />
             </div>
@@ -160,7 +160,7 @@ const GlobalTopTracksSection = () => {
               onClick={() => !isResolving && handlePlay(track)}
               className="w-40 flex-shrink-0 rounded-3xl border border-border/50 bg-card/70 p-3 text-left transition-transform active:scale-[0.98]"
             >
-              <div className="relative mb-3 aspect-square overflow-hidden rounded-2xl bg-muted/50">
+              <div className="relative mb-3 aspect-square overflow-hidden rounded-3xl bg-muted/50">
                 <img src={track.cover_url!} alt={`${track.title} cover art`} className="h-full w-full object-cover" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                 {isResolving && (
                   <div className="absolute bottom-2 right-2 rounded-full border border-border/60 bg-background/85 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">

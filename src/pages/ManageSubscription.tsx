@@ -126,7 +126,7 @@ const ManageSubscription = () => {
             <p className="text-muted-foreground mb-6">Unlock the full Universflow experience.</p>
             <button
               onClick={() => navigate('/premium')}
-              className="px-6 py-3 rounded-2xl font-semibold bg-primary text-primary-foreground"
+              className="px-6 py-3 rounded-3xl font-semibold bg-primary text-primary-foreground"
             >
               Upgrade to Premium
             </button>
@@ -204,7 +204,7 @@ const ManageSubscription = () => {
                 initial={{ rotate: -20, scale: 0 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ ...iosSpring, delay: 0.1 }}
-                className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center"
+                className="w-14 h-14 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center"
               >
                 <Crown className="w-8 h-8 text-white" />
               </motion.div>
@@ -212,14 +212,14 @@ const ManageSubscription = () => {
 
             {/* Status row */}
             <div className="relative grid grid-cols-2 gap-3 mt-6">
-              <div className="rounded-2xl bg-black/20 backdrop-blur-sm p-3">
+              <div className="rounded-3xl bg-black/20 backdrop-blur-sm p-3">
                 <p className="text-[10px] uppercase tracking-wider text-white/70 font-semibold mb-1">Status</p>
                 <p className="text-sm font-bold text-white flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   Active
                 </p>
               </div>
-              <div className="rounded-2xl bg-black/20 backdrop-blur-sm p-3">
+              <div className="rounded-3xl bg-black/20 backdrop-blur-sm p-3">
                 <p className="text-[10px] uppercase tracking-wider text-white/70 font-semibold mb-1 flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {isLifetime ? 'Valid until' : 'Renews'}
@@ -236,13 +236,13 @@ const ManageSubscription = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...iosSpring, delay: 0.1 }}
-            className="rounded-2xl p-4 flex items-start gap-3"
+            className="rounded-3xl p-4 flex items-start gap-3"
             style={{
               background: 'linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.08))',
               border: '1px solid hsl(var(--primary) / 0.2)',
             }}
           >
-            <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center"
+            <div className="w-9 h-9 rounded-3xl flex-shrink-0 flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}>
               <Heart className="w-4.5 h-4.5 text-primary-foreground" fill="currentColor" />
             </div>
@@ -257,8 +257,8 @@ const ManageSubscription = () => {
           {/* Features included */}
           <section>
             <div className="flex items-center gap-2 mb-3 px-1">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              
+              <h3 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">
                 What you're using
               </h3>
             </div>
@@ -271,13 +271,13 @@ const ManageSubscription = () => {
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...iosSpring, delay: 0.15 + i * 0.04 }}
-                    className="rounded-2xl p-3.5 relative overflow-hidden"
+                    className="rounded-3xl p-3.5 relative overflow-hidden"
                     style={{
                       background: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border) / 0.6)',
                     }}
                   >
-                    <div className={`w-9 h-9 rounded-xl mb-2.5 flex items-center justify-center bg-gradient-to-br ${f.color}`}>
+                    <div className={`w-9 h-9 rounded-3xl mb-2.5 flex items-center justify-center bg-gradient-to-br ${f.color}`}>
                       <Icon className="w-4.5 h-4.5 text-white" />
                     </div>
                     <p className="text-[13px] font-semibold leading-tight">{f.title}</p>
@@ -290,12 +290,12 @@ const ManageSubscription = () => {
           </section>
 
           {/* Plan details */}
-          <section className="rounded-2xl overflow-hidden bg-card border border-border/60">
-            <div className="px-4 py-3 border-b border-border/60 flex items-center gap-2">
+          <section className="rounded-3xl overflow-hidden bg-card/50 border border-white/5 backdrop-blur-sm">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Plan details</span>
             </div>
-            <div className="divide-y divide-border/60">
+            <div className="divide-y divide-white/5">
               <Row label="Plan" value={planLabel(subscription?.subscription_type)} />
               <Row label="Status" value="Active" valueClass="text-emerald-400" />
               <Row label="Platform" value={(subscription?.platform || 'web').toUpperCase()} />
@@ -311,9 +311,9 @@ const ManageSubscription = () => {
           {/* CTA strip */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-            className="rounded-2xl p-4 flex items-center gap-3 bg-card border border-border/60"
+            className="rounded-3xl p-4 flex items-center gap-3 bg-card/50 border border-white/5 backdrop-blur-sm"
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/15">
+            <div className="w-10 h-10 rounded-3xl flex items-center justify-center bg-primary/15">
               <Gift className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
@@ -322,7 +322,7 @@ const ManageSubscription = () => {
             </div>
             <button
               onClick={() => navigate('/profile')}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground"
+              className="px-3 py-1.5 rounded-3xl text-xs font-semibold bg-primary text-primary-foreground"
             >
               Redeem
             </button>
@@ -357,20 +357,20 @@ const PremiumDebugPanel = ({
   errorMessage: string | null;
   onRefresh: () => Promise<void>;
 }) => (
-  <section className="rounded-2xl overflow-hidden bg-card border border-border/60 text-left">
-    <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between gap-3">
+  <section className="rounded-3xl overflow-hidden bg-card/50 border border-white/5 backdrop-blur-sm text-left">
+    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-semibold">Premium status debug</p>
         <p className="text-[11px] text-muted-foreground">Live server verification details</p>
       </div>
       <button
         onClick={() => { void onRefresh(); }}
-        className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground"
+        className="shrink-0 px-3 py-1.5 rounded-3xl text-xs font-semibold bg-primary text-primary-foreground"
       >
         Refresh
       </button>
     </div>
-    <div className="divide-y divide-border/60">
+    <div className="divide-y divide-white/5">
       <Row label="Verified status" value={verifiedStatus ? 'Premium verified' : 'Not verified'} valueClass={verifiedStatus ? 'text-emerald-400' : 'text-amber-400'} />
       <Row label="Last realtime update" value={formatDebugTime(lastRealtimeUpdate)} />
       <Row label="Last server check" value={formatDebugTime(lastCheckedAt)} />
@@ -383,7 +383,7 @@ const PremiumDebugPanel = ({
         <span className="text-[11px] opacity-60 hidden group-open:inline">Hide</span>
       </summary>
       <div className="p-4 pt-0">
-        <pre className="max-h-44 overflow-auto rounded-xl bg-background/70 border border-border/50 p-3 text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+        <pre className="max-h-44 overflow-auto rounded-3xl bg-background/70 border border-border/50 p-3 text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
           {subscriptionRow ? JSON.stringify(subscriptionRow, null, 2) : 'No subscription row returned by the server.'}
         </pre>
       </div>

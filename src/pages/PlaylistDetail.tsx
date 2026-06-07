@@ -361,7 +361,7 @@ const PlaylistDetail = () => {
                         {song.cover_url ? (
                           <img src={song.cover_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <Music className="w-5 h-5 text-muted-foreground" />
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">

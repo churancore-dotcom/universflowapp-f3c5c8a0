@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveIndexedTrack, prefetchIndexedTrack } from '@/lib/musicIndexer';
 import { playerProgressStore, usePlayerProgress } from '@/lib/playerProgressStore';
 import { resume as resumeAudioEngine } from '@/lib/audioEngine';
+import { EQ_SETTINGS_KEY, getEQSettings } from '@/lib/eqSettings';
 import { toast } from 'sonner';
 
 interface YouTubePlayer {
@@ -98,8 +99,6 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-const EQ_SETTINGS_KEY = 'eq_settings';
-
 const CORS_ENABLED_AUDIO_HOSTS = ['supabase.co', 'the-standard.io', 'private.coffee', 'saavncdn.com'];
 
 const shouldUseAnonymousCors = (audioUrl?: string | null) => {
@@ -179,10 +178,7 @@ const buildStreamProxyUrl = (sourceUrl: string) => {
 
 const isEqProcessingEnabled = () => {
   try {
-    const raw = localStorage.getItem(EQ_SETTINGS_KEY);
-    if (!raw) return false;
-
-    const settings = JSON.parse(raw);
+    const settings = getEQSettings();
     const hasBands = Array.isArray(settings?.bands) && settings.bands.some((gain: number) => Math.abs(gain) >= 0.5);
 
     return Boolean(

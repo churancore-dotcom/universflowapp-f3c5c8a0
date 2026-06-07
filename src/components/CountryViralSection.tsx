@@ -180,7 +180,7 @@ const CountryViralSection = memo(function CountryViralSection() {
                     onClick={() => handleTap(track, i)}
                     className="w-32 flex-shrink-0 text-left active:scale-[0.96] transition-transform"
                   >
-                    <div className={`relative mb-2 aspect-square overflow-hidden rounded-2xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
+                    <div className={`relative mb-2 aspect-square overflow-hidden rounded-3xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
                       <img src={track.cover_url!} alt={`${track.title} cover`} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                       <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white">
                         #{i + 1}

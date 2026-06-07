@@ -1,8 +1,8 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Disc3, Heart, Pause, Play, Radio, Sparkles } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pause, Play } from 'lucide-react';
 import { Song, usePlayer } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +53,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
   const { currentSong, queue, playSong, togglePlay, isPlaying } = usePlayer();
   const { progress, duration } = usePlayerProgress();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: streamSongs = [] } = useQuery({
     queryKey: ['home-bento', 'stream-fallback'],
@@ -69,6 +70,23 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
       return (data || []).map(songFromRow);
     },
   });
+
+  useEffect(() => {
+    const channel = supabase.channel('home-bento-live-data');
+    ['stream_songs', 'recently_played', 'user_library', 'songs'].forEach((table) => {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+        queryClient.invalidateQueries({ queryKey: ['home-bento'] });
+        queryClient.invalidateQueries({ queryKey: ['home', 'songs'] });
+      });
+    });
+    channel.subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!currentSong?.id) return;
+    queryClient.invalidateQueries({ queryKey: ['home-bento', 'recent', user?.id ?? 'anon'] });
+  }, [currentSong?.id, queryClient, user?.id]);
 
   const { data: recentSongs = [] } = useQuery({
     queryKey: ['home-bento', 'recent', user?.id ?? 'anon'],
@@ -223,7 +241,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
             ) : recent.map((s) => (
               <button key={s.id} onClick={() => playFromTile(s)} className="w-full flex items-center gap-2 text-left active:opacity-70">
                 <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                  {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <Disc3 className="w-4 h-4 m-2.5 text-white/30" />}
+                  {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-white/5 to-white/10" />}
                 </div>
                 <div className="overflow-hidden flex-1">
                   <p className="text-[12px] font-bold text-white truncate leading-tight">{s.title}</p>
@@ -239,7 +257,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
           <div className="grid grid-cols-3 gap-1.5 mb-3">
             {liked.slice(0, 3).map((s) => (
               <button key={s.id} onClick={() => playFromTile(s)} className="aspect-square rounded-xl overflow-hidden bg-white/5 active:scale-95 transition-transform">
-                {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <Heart className="w-4 h-4 m-auto text-white/30" />}
+                {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-white/5 to-white/10" />}
               </button>
             ))}
           </div>
@@ -271,8 +289,8 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
         <motion.div {...fadeUp(4)} className="bg-card rounded-3xl p-4 border border-white/5 flex flex-col h-32">
           <span className="text-white/40 text-[10px] font-extrabold uppercase tracking-[0.18em] mb-2">Moods</span>
           {moodList.length === 0 ? (
-            <button onClick={() => navigate('/search')} className="mt-auto flex items-center gap-2 text-left text-white/45 text-[11px]">
-              <Radio className="w-4 h-4" /> Discover by search
+            <button onClick={() => navigate('/search')} className="mt-auto text-left text-white/45 text-[11px]">
+              Discover by search
             </button>
           ) : (
             <div className="flex flex-wrap gap-1.5">
@@ -289,7 +307,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
           <motion.button {...fadeUp(5)} onClick={() => playFromTile(newRelease)} className="rounded-3xl p-4 border border-white/5 flex flex-col h-32 text-left relative overflow-hidden active:scale-[0.97] transition-transform bg-card">
             <div className="flex justify-between items-start">
               <span className="text-[hsl(18_100%_82%)] text-[10px] font-extrabold uppercase tracking-[0.18em]">New</span>
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span className="w-2 h-2 rounded-full bg-primary" aria-hidden />
             </div>
             <div className="mt-auto relative z-10">
               <p className="text-[12px] font-bold text-white truncate">{newRelease.title}</p>

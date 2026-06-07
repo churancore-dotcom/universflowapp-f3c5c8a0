@@ -18,6 +18,7 @@ import type { Song } from '@/contexts/PlayerContext';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { canDownloadSong, canLikeSong, isIndexedSong } from '@/lib/songSupport';
 import { usePremium } from '@/hooks/usePremium';
+import { getEQPresetLabel, useEQSettings } from '@/lib/eqSettings';
 
 const formatTime = (seconds: number) => {
   if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '0:00';
@@ -91,6 +92,8 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
   // the slider thumb back while the user is dragging it.
   const [dragProgress, setDragProgress] = useState<number | null>(null);
   const { isPremium } = usePremium();
+  const eqSettings = useEQSettings();
+  const eqLabel = getEQPresetLabel(eqSettings);
   const prevSongIdRef = useRef<string | null>(null);
   const navigate = useNavigate();
 
@@ -211,7 +214,7 @@ const FullscreenPlayer = memo(function FullscreenPlayer() {
               </button>
               
               <div className="text-center flex-1 px-2 min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Now Playing</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-white/50">Now Playing · EQ {eqLabel.toUpperCase()}</p>
                 <p className="text-xs font-semibold text-white/90 truncate">{currentSong.album || 'Library'}</p>
               </div>
               

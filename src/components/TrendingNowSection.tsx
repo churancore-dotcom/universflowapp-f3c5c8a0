@@ -36,7 +36,7 @@ const TrendingNowSection = memo(({ songs }: Props) => {
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
           <div
-            className="w-9 h-9 rounded-2xl flex items-center justify-center"
+            className="w-9 h-9 rounded-3xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #ff2d55, #ff6b35)' }}
           >
             <Flame className="w-4 h-4 text-white" />
@@ -59,7 +59,7 @@ const TrendingNowSection = memo(({ songs }: Props) => {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.025 }}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-left active:bg-white/5"
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-3xl text-left active:bg-white/5"
               >
                 <span
                   className={`text-[22px] font-black w-7 text-center tabular-nums ${

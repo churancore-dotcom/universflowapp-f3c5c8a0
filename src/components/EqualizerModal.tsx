@@ -17,6 +17,7 @@ import {
   type StudioSpaceId,
 } from '@/lib/audioEngine';
 import { useEngineState } from '@/hooks/useGlobalAudioEngine';
+import { setEQSettings, useEQSettings } from '@/lib/eqSettings';
 
 interface StudioSpace {
   id: StudioSpaceId;
@@ -80,43 +81,13 @@ const defaultBands: EQBand[] = [
   { frequency: 16000, gain: 0, label: '16k' },
 ];
 
-const STORAGE_KEY = 'eq_settings';
-
-function loadSettings() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return null;
-}
-
-function saveSettings(data: any) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    // Notify PlayerContext so it can re-source the current track through the
-    // CORS-safe proxy if EQ just became active mid-song. Without this, the
-    // engine stays in "direct" mode and EQ does nothing until the next track.
-    try { window.dispatchEvent(new CustomEvent('uf-eq-changed')); } catch {}
-  } catch {}
-}
-
-
 const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   const { audioElement, currentSong } = usePlayer();
   const engineMode = useEngineState();
   const isConnected = engineMode === 'processed';
-
-  const saved = loadSettings();
-  const [bands, setBandsState] = useState<EQBand[]>(
-    saved?.bands ? defaultBands.map((b, i) => ({ ...b, gain: saved.bands[i] ?? 0 })) : defaultBands
-  );
-  const [bassBoost, setBassBoost] = useState(Math.min(saved?.bassBoost ?? 0, 100));
-  const [reverb, setReverb] = useState(Math.min(saved?.reverb ?? 0, 45));
-  const [playbackSpeed, setPlaybackSpeed] = useState(saved?.playbackSpeed ?? 1);
-  const [spatialAudio, setSpatialAudio] = useState(saved?.spatialAudio ?? false);
-  const [studioSpace, setStudioSpace] = useState<StudioSpaceId>(saved?.studioSpace ?? 'off');
-  const [lateNight, setLateNight] = useState<boolean>(saved?.lateNight ?? false);
-  const [activePreset, setActivePreset] = useState<string>(saved?.activePreset ?? 'flat');
+  const settings = useEQSettings();
+  const bands = defaultBands.map((b, i) => ({ ...b, gain: settings.bands[i] ?? 0 }));
+  const { bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight, activePreset } = settings;
 
   // Keep the WebAudio graph attached for every normal song. Flat settings are
   // neutral, but staying connected makes presets/sliders and next-song changes
@@ -162,47 +133,32 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
     if (audioElement) audioElement.playbackRate = playbackSpeed;
   }, [playbackSpeed, audioElement]);
 
-  // Persist
-  useEffect(() => {
-    saveSettings({
-      bands: bands.map(b => b.gain),
-      bassBoost,
-      reverb,
-      playbackSpeed,
-      spatialAudio,
-      studioSpace,
-      lateNight,
-      activePreset,
-    });
-  }, [bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight, activePreset]);
-
   const handleBandChange = useCallback((index: number, value: number) => {
-    setBandsState(prev => prev.map((b, i) => i === index ? { ...b, gain: value } : b));
-    setActivePreset('custom');
+    setEQSettings((prev) => ({ bands: prev.bands.map((gain, i) => i === index ? value : gain), activePreset: 'custom' }));
   }, []);
 
   const handlePresetSelect = useCallback((preset: Preset) => {
-    setBandsState(prev => prev.map((b, i) => ({ ...b, gain: preset.bands[i] ?? 0 })));
-    setBassBoost(Math.min(preset.bassBoost, 60));
-    setActivePreset(preset.id);
+    setEQSettings({ bands: preset.bands, bassBoost: Math.min(preset.bassBoost, 60), activePreset: preset.id });
     toast.success(`${preset.name} preset applied`);
   }, []);
 
   const handleReset = useCallback(() => {
-    setBandsState(defaultBands);
-    setBassBoost(0);
-    setReverb(0);
-    setPlaybackSpeed(1);
-    setSpatialAudio(false);
-    setStudioSpace('off');
-    setLateNight(false);
-    setActivePreset('flat');
+    setEQSettings({
+      bands: defaultBands.map((b) => b.gain),
+      bassBoost: 0,
+      reverb: 0,
+      playbackSpeed: 1,
+      spatialAudio: false,
+      studioSpace: 'off',
+      lateNight: false,
+      activePreset: 'flat',
+    });
     if (audioElement) audioElement.playbackRate = 1;
     toast.success('Equalizer reset');
   }, [audioElement]);
 
   const handleSpaceSelect = useCallback((id: StudioSpaceId) => {
-    setStudioSpace(id);
+    setEQSettings({ studioSpace: id });
     if (id !== 'off') {
       const name = STUDIO_SPACES.find(s => s.id === id)?.name;
       if (name) toast.success(`Now playing in ${name}`);
@@ -379,7 +335,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
                     min={0}
                     max={100}
                     step={5}
-                    onValueChange={([value]) => { setBassBoost(value); setActivePreset('custom'); }}
+                        onValueChange={([value]) => setEQSettings({ bassBoost: value, activePreset: 'custom' })}
                     className="w-full [&_[role=slider]]:bg-rose-500 [&_[role=slider]]:border-rose-400 [&_[data-radix-slider-range]]:bg-rose-500/60"
                   />
                 </div>
@@ -398,7 +354,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
                     min={0}
                     max={45}
                     step={5}
-                    onValueChange={([value]) => setReverb(value)}
+                    onValueChange={([value]) => setEQSettings({ reverb: value })}
                     className="w-full [&_[role=slider]]:bg-rose-500 [&_[role=slider]]:border-rose-400 [&_[data-radix-slider-range]]:bg-rose-500/60"
                   />
                 </div>
@@ -417,7 +373,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
                     min={50}
                     max={200}
                     step={25}
-                    onValueChange={([value]) => setPlaybackSpeed(value / 100)}
+                    onValueChange={([value]) => setEQSettings({ playbackSpeed: value / 100 })}
                     className="w-full [&_[role=slider]]:bg-rose-500 [&_[role=slider]]:border-rose-400 [&_[data-radix-slider-range]]:bg-rose-500"
                   />
                   <div className="flex justify-between mt-1">
@@ -503,7 +459,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
               </div>
               <Switch
                 checked={spatialAudio}
-                onCheckedChange={setSpatialAudio}
+                onCheckedChange={(value) => setEQSettings({ spatialAudio: value })}
                 className="data-[state=checked]:bg-primary"
               />
             </div>
@@ -534,7 +490,7 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
               </div>
               <Switch
                 checked={lateNight}
-                onCheckedChange={setLateNight}
+                onCheckedChange={(value) => setEQSettings({ lateNight: value })}
                 className="data-[state=checked]:bg-primary"
               />
             </div>
