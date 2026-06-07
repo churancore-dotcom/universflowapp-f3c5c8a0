@@ -41,7 +41,7 @@ const FreshReleasesSection = memo(({ songs }: Props) => {
       >
         <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
           <div
-            className="w-9 h-9 rounded-2xl flex items-center justify-center"
+            className="w-9 h-9 rounded-3xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #785aff, #00d4ff)' }}
           >
             <Sparkles className="w-4 h-4 text-white" />
@@ -57,7 +57,7 @@ const FreshReleasesSection = memo(({ songs }: Props) => {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => play(hero)}
-            className="relative w-full h-44 rounded-2xl overflow-hidden text-left group"
+            className="relative w-full h-44 rounded-3xl overflow-hidden text-left group"
             style={{ boxShadow: '0 10px 32px rgba(0,0,0,0.45)' }}
           >
             {hero.cover_url && (
@@ -91,7 +91,7 @@ const FreshReleasesSection = memo(({ songs }: Props) => {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 + idx * 0.03 }}
-              className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-left active:bg-white/5"
+              className="w-full flex items-center gap-3 px-2 py-2 rounded-3xl text-left active:bg-white/5"
             >
               <div className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
                 {song.cover_url && <OptimizedImage src={song.cover_url} alt={song.title} className="w-full h-full object-cover" />}

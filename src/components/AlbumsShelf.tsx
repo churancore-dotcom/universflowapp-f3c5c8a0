@@ -64,7 +64,7 @@ const AlbumsShelf = memo(({ songs }: Props) => {
       >
         <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
           <div
-            className="w-9 h-9 rounded-2xl flex items-center justify-center"
+            className="w-9 h-9 rounded-3xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #00c896, #00d4ff)' }}
           >
             <Disc3 className="w-4 h-4 text-white" />
@@ -84,7 +84,7 @@ const AlbumsShelf = memo(({ songs }: Props) => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="relative aspect-square rounded-2xl overflow-hidden text-left group"
+              className="relative aspect-square rounded-3xl overflow-hidden text-left group"
               style={{
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 border: '0.5px solid rgba(255,255,255,0.08)',

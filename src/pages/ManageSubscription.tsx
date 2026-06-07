@@ -257,8 +257,8 @@ const ManageSubscription = () => {
           {/* Features included */}
           <section>
             <div className="flex items-center gap-2 mb-3 px-1">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              
+              <h3 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">
                 What you're using
               </h3>
             </div>

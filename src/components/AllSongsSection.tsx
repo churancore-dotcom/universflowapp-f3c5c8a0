@@ -39,7 +39,7 @@ const SongRow = memo(({ song, index, songs }: { song: Song; index: number; songs
   return (
     <div
       onClick={handleClick}
-      className={`flex items-center gap-3.5 px-3 py-3 rounded-2xl active:scale-[0.98] transition-all cursor-pointer ${
+      className={`flex items-center gap-3.5 px-3 py-3 rounded-3xl active:scale-[0.98] transition-all cursor-pointer ${
         isCurrentSong
           ? ''
           : 'active:bg-white/[0.03]'
@@ -138,7 +138,7 @@ const CompactGridCard = memo(({ song, index, songs }: { song: Song; index: numbe
     >
       {/* Album art */}
       <div
-        className={`relative aspect-square rounded-2xl overflow-hidden mb-2 ${
+        className={`relative aspect-square rounded-3xl overflow-hidden mb-2 ${
           isCurrentSong ? 'ring-2 ring-primary/80' : ''
         }`}
         style={{
@@ -289,7 +289,7 @@ const AllSongsSection = memo(({ songs }: AllSongsSectionProps) => {
         {songs.length > displayCount && (
           <motion.button
             onClick={toggleShowAll}
-            className="w-full mt-4 py-3 rounded-2xl text-[13px] font-bold active:scale-[0.98] transition-transform"
+            className="w-full mt-4 py-3 rounded-3xl text-[13px] font-bold active:scale-[0.98] transition-transform"
             style={{
               background: 'linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.06))',
               border: '0.5px solid hsl(var(--primary) / 0.15)',

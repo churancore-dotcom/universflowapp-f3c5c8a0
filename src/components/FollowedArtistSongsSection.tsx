@@ -63,7 +63,7 @@ const FollowedArtistSongsSection = memo(function FollowedArtistSongsSection({ so
               }}
               className="w-36 flex-shrink-0 text-left active:scale-[0.96] transition-transform"
             >
-              <div className={`relative mb-2 aspect-square overflow-hidden rounded-2xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
+              <div className={`relative mb-2 aspect-square overflow-hidden rounded-3xl bg-muted/50 ${active ? 'ring-2 ring-primary' : ''}`}>
                 {song.cover_url ? (
                   <img src={song.cover_url} alt={`${song.title} cover art`} className="h-full w-full object-cover" loading="lazy" />
                 ) : (
