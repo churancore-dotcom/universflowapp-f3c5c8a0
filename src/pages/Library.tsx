@@ -462,24 +462,8 @@ const Library = () => {
                     </div>
                     <span className="text-sm font-semibold text-left leading-tight">Create Playlist</span>
                   </motion.button>
-                  <motion.button
-                    className="flex items-center gap-3 p-3.5 rounded-xl"
-                    style={{
-                      background: 'linear-gradient(135deg, hsl(var(--primary) / 0.18), hsl(var(--accent) / 0.10))',
-                      border: '0.5px solid hsl(var(--primary) / 0.22)',
-                    }}
-                    onClick={() => setShowAIPlaylist(true)}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'hsl(var(--primary) / 0.18)' }}
-                    >
-                      <Sparkles className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-sm font-semibold text-left leading-tight">Auto Generate</span>
-                  </motion.button>
                 </div>
+
                 {playlists.length === 0 ? (
                   <div className="text-center py-6">
                     <p className="text-muted-foreground text-xs">No playlists yet</p>
