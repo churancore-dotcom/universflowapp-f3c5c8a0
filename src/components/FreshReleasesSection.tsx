@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Play } from 'lucide-react';
+import { Disc3, Play } from 'lucide-react';
 import { Song, usePlayer } from '@/contexts/PlayerContext';
 import OptimizedImage from './OptimizedImage';
 import { triggerHaptic } from '@/hooks/useHaptics';
