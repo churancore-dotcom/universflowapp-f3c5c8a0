@@ -160,10 +160,11 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
 
             {/* Now Playing Widget - solid translucent (no backdrop-blur over animated themes) */}
             <motion.div
-              className="mx-4 mb-3 rounded-[22px] overflow-hidden"
+              className="mx-4 mb-3 rounded-3xl overflow-hidden relative"
               style={{
-                background: 'rgba(20,20,28,0.72)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(18 100% 82%) 100%)',
+                boxShadow: '0 12px 40px -10px hsl(var(--primary) / 0.45)',
+                border: '0.5px solid hsl(0 0% 100% / 0.16)',
               }}
               initial={{ opacity: 0, y: 50, scale: 0.85 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -171,7 +172,16 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
               exit={{ opacity: 0, y: 50, scale: 0.85 }}
               transition={{ delay: 0.2, duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
             >
-              <div className="p-4 pb-3">
+              {currentSong.cover_url && (
+                <img
+                  src={currentSong.cover_url}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-y-0 right-0 h-full w-2/3 object-cover pointer-events-none"
+                  style={{ filter: 'blur(18px) saturate(140%)', opacity: 0.42, WebkitMaskImage: 'linear-gradient(to left, #000 30%, transparent 100%)', maskImage: 'linear-gradient(to left, #000 30%, transparent 100%)' }}
+                />
+              )}
+              <div className="relative z-10 p-4 pb-3">
                 {/* Album art + info row */}
                 <div className="flex items-center gap-3 mb-4">
                   {/* Album art */}
@@ -210,10 +220,10 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                         exit={{ opacity: 0, x: -15 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <h3 className="text-[15px] font-semibold text-white truncate leading-tight">
+                         <h3 className="text-[15px] font-bold text-black truncate leading-tight">
                           {currentSong.title}
                         </h3>
-                        <p className="text-[13px] text-white/55 truncate leading-tight mt-0.5">
+                        <p className="text-[13px] text-black/55 truncate leading-tight mt-0.5">
                           {currentSong.artist}
                         </p>
                       </motion.div>
@@ -230,7 +240,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                       {[0, 1, 2].map(i => (
                         <motion.div
                           key={i}
-                          className="w-[3px] rounded-full bg-white/70"
+                          className="w-[3px] rounded-full bg-black/70"
                           animate={{ height: ['6px', '14px', '6px'] }}
                           transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
                         />
@@ -246,9 +256,9 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     max={duration || 100}
                     step={0.1}
                     onValueChange={([value]) => seek(value)}
-                    className="[&_[role=slider]]:w-[14px] [&_[role=slider]]:h-[14px] [&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-md [&_[data-radix-slider-track]]:h-[3px] [&_[data-radix-slider-track]]:bg-white/15 [&_[data-radix-slider-range]]:bg-white/90"
+                    className="[&_[role=slider]]:w-[14px] [&_[role=slider]]:h-[14px] [&_[role=slider]]:bg-black [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-md [&_[data-radix-slider-track]]:h-[3px] [&_[data-radix-slider-track]]:bg-black/15 [&_[data-radix-slider-range]]:bg-black/90"
                   />
-                  <div className="flex justify-between mt-1.5 text-[11px] text-white/40 font-medium tabular-nums px-0.5">
+                  <div className="flex justify-between mt-1.5 text-[11px] text-black/45 font-medium tabular-nums px-0.5">
                     <span>{formatTime(progress)}</span>
                     <span>-{formatTime(Math.max(0, duration - progress))}</span>
                   </div>
@@ -262,7 +272,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.8 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <Shuffle className={`w-[16px] h-[16px] ${shuffle ? 'text-white' : 'text-white/35'}`} />
+                    <Shuffle className={`w-[16px] h-[16px] ${shuffle ? 'text-black' : 'text-black/35'}`} />
                   </motion.button>
 
                   <motion.button
@@ -271,12 +281,12 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.82 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <SkipBack className="w-[22px] h-[22px] text-white" fill="white" />
+                    <SkipBack className="w-[22px] h-[22px] text-black" fill="black" />
                   </motion.button>
 
                   <motion.button
                     onClick={togglePlay}
-                    className="w-[56px] h-[56px] rounded-full bg-white/95 flex items-center justify-center shadow-lg"
+                    className="w-[56px] h-[56px] rounded-full bg-black flex items-center justify-center shadow-lg"
                     whileTap={{ scale: 0.88 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
@@ -289,7 +299,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                           exit={{ scale: 0.5, opacity: 0 }}
                           transition={{ duration: 0.15 }}
                         >
-                          <Pause className="w-[26px] h-[26px] text-black" fill="black" />
+                          <Pause className="w-[26px] h-[26px] text-white" fill="white" />
                         </motion.div>
                       ) : (
                         <motion.div
@@ -299,7 +309,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                           exit={{ scale: 0.5, opacity: 0 }}
                           transition={{ duration: 0.15 }}
                         >
-                          <Play className="w-[26px] h-[26px] text-black ml-0.5" fill="black" />
+                          <Play className="w-[26px] h-[26px] text-white ml-0.5" fill="white" />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -311,7 +321,7 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     whileTap={{ scale: 0.82 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <SkipForward className="w-[22px] h-[22px] text-white" fill="white" />
+                    <SkipForward className="w-[22px] h-[22px] text-black" fill="black" />
                   </motion.button>
 
                   <motion.button
@@ -321,9 +331,9 @@ const LockScreenPlayer = ({ isOpen, onClose }: LockScreenPlayerProps) => {
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
                     {repeat === 'one' ? (
-                      <Repeat1 className="w-[16px] h-[16px] text-white" />
+                      <Repeat1 className="w-[16px] h-[16px] text-black" />
                     ) : (
-                      <Repeat className={`w-[16px] h-[16px] ${repeat !== 'off' ? 'text-white' : 'text-white/35'}`} />
+                      <Repeat className={`w-[16px] h-[16px] ${repeat !== 'off' ? 'text-black' : 'text-black/35'}`} />
                     )}
                   </motion.button>
                 </div>

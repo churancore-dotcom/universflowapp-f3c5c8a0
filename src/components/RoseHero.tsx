@@ -41,10 +41,8 @@ const RoseHero: React.FC<RoseHeroProps> = ({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative rounded-3xl overflow-hidden block ${compact ? 'p-4' : 'p-5'} ${className}`}
+      className={`relative rounded-3xl overflow-hidden block uf-rose-gradient ${compact ? 'p-4' : 'p-5'} ${className}`}
       style={{
-        background: 'linear-gradient(135deg, #FF2D55 0%, #FFB199 100%)',
-        boxShadow: '0 12px 40px -10px rgba(255,45,85,0.45)',
         fontFamily: 'Barlow, Inter, system-ui, sans-serif',
       }}
     >
@@ -80,8 +78,7 @@ const RoseHero: React.FC<RoseHeroProps> = ({
           </p>
         )}
         <h1
-          className="text-black text-[30px] leading-[0.95] truncate"
-          style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.01em' }}
+          className="text-black text-[30px] leading-[0.95] truncate font-display tracking-wide"
         >
           {title}
         </h1>
