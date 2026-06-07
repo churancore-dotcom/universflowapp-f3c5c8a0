@@ -223,7 +223,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
             ) : recent.map((s) => (
               <button key={s.id} onClick={() => playFromTile(s)} className="w-full flex items-center gap-2 text-left active:opacity-70">
                 <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                  {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <Disc3 className="w-4 h-4 m-2.5 text-white/30" />}
+                  {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-white/5 to-white/10" />}
                 </div>
                 <div className="overflow-hidden flex-1">
                   <p className="text-[12px] font-bold text-white truncate leading-tight">{s.title}</p>
@@ -239,7 +239,7 @@ const HomeBento: React.FC<Props> = ({ songs }) => {
           <div className="grid grid-cols-3 gap-1.5 mb-3">
             {liked.slice(0, 3).map((s) => (
               <button key={s.id} onClick={() => playFromTile(s)} className="aspect-square rounded-xl overflow-hidden bg-white/5 active:scale-95 transition-transform">
-                {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <Heart className="w-4 h-4 m-auto text-white/30" />}
+                {s.cover_url ? <img src={s.cover_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-white/5 to-white/10" />}
               </button>
             ))}
           </div>

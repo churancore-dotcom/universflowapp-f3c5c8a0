@@ -1,25 +1,6 @@
 import { useEffect, useState } from 'react';
 import { connectAudioElement, setBands, setReverb, setSpatial, setLateNight, setStudioSpace as engineSetStudioSpace, resume, subscribe, type StudioSpaceId } from '@/lib/audioEngine';
-
-const STORAGE_KEY = 'eq_settings';
-
-interface StoredEQ {
-  bands?: number[];
-  bassBoost?: number;
-  reverb?: number;
-  spatialAudio?: boolean;
-  playbackSpeed?: number;
-  studioSpace?: StudioSpaceId;
-  lateNight?: boolean;
-}
-
-function readStored(): StoredEQ {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
+import { getEQSettings } from '@/lib/eqSettings';
 
 /**
  * Mount once at app root. Connects the engine to the live <audio> element
@@ -43,20 +24,20 @@ export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
     let reapplyTimer: number | null = null;
 
     const doReapply = () => {
-      const s = readStored();
+      const s = getEQSettings();
       // Always keep normal HTMLAudio songs attached to the WebAudio graph.
       // Flat EQ still sounds neutral, but the graph remains ready so the next
       // song and the next slider/preset change apply instantly without a
       // silent "direct mode" gap.
       const ok = connectAudioElement(audioElement);
       if (ok) {
-        setBands(s.bands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], s.bassBoost ?? 0);
-        setReverb(s.reverb ?? 0);
-        engineSetStudioSpace(s.studioSpace ?? 'off');
-        setSpatial(!!s.spatialAudio);
-        setLateNight(!!s.lateNight);
+        setBands(s.bands, s.bassBoost);
+        setReverb(s.reverb);
+        engineSetStudioSpace(s.studioSpace);
+        setSpatial(s.spatialAudio);
+        setLateNight(s.lateNight);
       }
-      if (typeof s.playbackSpeed === 'number') audioElement.playbackRate = s.playbackSpeed;
+      audioElement.playbackRate = s.playbackSpeed;
       lastAppliedSrc = audioElement.currentSrc || audioElement.src || '';
     };
 

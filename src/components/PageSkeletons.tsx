@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export const HomeSkeleton = memo(() => (
   <div className="space-y-5 animate-fade-in">
     {/* Featured Artists skeleton */}
-    <div className="rounded-3xl p-3 pb-2" style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-3xl p-3 pb-2" style={{ background: 'hsl(var(--card) / 0.5)', border: '0.5px solid rgba(255,255,255,0.04)' }}>
       <div className="flex items-center gap-1.5 mb-3">
         <Skeleton className="w-5 h-5 rounded-md" />
         <Skeleton className="w-28 h-4 rounded-md" />
@@ -22,7 +22,7 @@ export const HomeSkeleton = memo(() => (
     </div>
 
     {/* Horizontal section skeleton */}
-    <div className="rounded-3xl p-3 pb-2" style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-3xl p-3 pb-2" style={{ background: 'hsl(var(--card) / 0.5)', border: '0.5px solid rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <Skeleton className="w-24 h-4 rounded-md" />
@@ -42,7 +42,7 @@ export const HomeSkeleton = memo(() => (
     </div>
 
     {/* All Songs grid skeleton */}
-    <div className="rounded-3xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-3xl p-3" style={{ background: 'hsl(var(--card) / 0.5)', border: '0.5px solid rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <Skeleton className="w-20 h-4 rounded-md" />
@@ -85,7 +85,7 @@ LibrarySkeleton.displayName = 'LibrarySkeleton';
 export const LibraryArtistsSkeleton = memo(() => (
   <div className="grid grid-cols-3 gap-3 animate-fade-in">
     {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="flex flex-col items-center p-3 rounded-3xl" style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)' }}>
+      <div key={i} className="flex flex-col items-center p-3 rounded-3xl" style={{ background: 'hsl(var(--card) / 0.5)', border: '0.5px solid rgba(255,255,255,0.04)' }}>
         <Skeleton className="w-16 h-16 rounded-full mb-2" />
         <Skeleton className="w-14 h-3 rounded" />
       </div>

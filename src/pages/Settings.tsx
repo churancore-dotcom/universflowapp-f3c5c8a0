@@ -184,22 +184,22 @@ const Settings = () => {
         <main className="flex-1 overflow-y-auto px-4 pt-3 pb-32 space-y-4" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Account / Email verification */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(212 100% 50% / 0.9)' }}>
                 <Info className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Account</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Account</h2>
             </div>
             <EmailVerificationCard />
           </section>
 
           {/* Playback */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(28 100% 50% / 0.9)' }}>
                 <Headphones className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Playback</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Playback</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <div className="px-4 py-3 border-b border-border/50">
@@ -282,11 +282,11 @@ const Settings = () => {
 
           {/* Support */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(350 100% 60% / 0.9)' }}>
                 <Heart className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Support</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Support</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <button onClick={() => navigate(isPremium ? '/subscription' : '/premium')} className="w-full px-4 py-3 flex items-center justify-between border-b border-border/50 active:bg-muted/30">
@@ -311,11 +311,11 @@ const Settings = () => {
 
           {/* Notifications */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(0 85% 58% / 0.9)' }}>
                 <Bell className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Notifications</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Notifications</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
@@ -331,11 +331,11 @@ const Settings = () => {
 
           {/* Appearance - Theme */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(280 80% 60% / 0.9)' }}>
                 <Palette className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Appearance</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Appearance</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <div className="px-4 py-3">
@@ -376,11 +376,11 @@ const Settings = () => {
 
           {/* Storage */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(0 90% 58% / 0.9)' }}>
                 <Trash2 className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">Storage</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Storage</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <button onClick={handleClearCache} className="w-full px-4 py-3 flex items-center justify-between text-destructive active:bg-destructive/10">
@@ -392,11 +392,11 @@ const Settings = () => {
 
           {/* About */}
           <section>
-            <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 mb-2.5 px-1">
               <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(195 100% 55% / 0.9)' }}>
                 <Info className="w-3 h-3 text-white" />
               </div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase">About</h2>
+              <h2 className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">About</h2>
             </div>
             <div className="rounded-3xl overflow-hidden bg-card border border-border/50">
               <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
