@@ -14,6 +14,7 @@ import EmailVerificationCard from '@/components/EmailVerificationCard';
 import EqualizerModal from '@/components/EqualizerModal';
 
 import { applyTheme, type ThemeMode } from '@/lib/themeBoot';
+import { setEQSettings } from '@/lib/eqSettings';
 import SEOHead from '@/components/SEOHead';
 
 
@@ -27,6 +28,7 @@ const writeEq = (patch: Record<string, unknown>) => {
   try {
     const cur = readEq();
     localStorage.setItem(EQ_KEY, JSON.stringify({ ...cur, ...patch }));
+    setEQSettings(patch as Parameters<typeof setEQSettings>[0]);
   } catch { /* ignore */ }
 };
 
