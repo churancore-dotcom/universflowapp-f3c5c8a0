@@ -401,6 +401,15 @@ export function connectAudioElement(el: HTMLAudioElement): boolean {
   if (engine.el === el && engine.signature === sig && sig !== null) {
     if (ctx.state === 'suspended') ctx.resume().catch(() => { });
     if (engine.mode === 'processed') return true;
+    if (engine.mode === 'direct' && isCorsSafe(el)) {
+      const existingSource = sourceCache.get(el);
+      if (existingSource) {
+        disconnectAll();
+        buildProcessedChain(ctx, existingSource);
+        setMode('processed');
+        return true;
+      }
+    }
   }
 
   disconnectAll();
