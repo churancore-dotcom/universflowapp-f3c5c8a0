@@ -58,18 +58,20 @@ export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
     };
 
     // Coalesce loadstart+loadedmetadata+canplay bursts into a single rebuild.
-    const reapply = () => {
-      if (reapplyTimer != null) return;
+    const reapply = (delay = 30) => {
+      if (reapplyTimer != null) window.clearTimeout(reapplyTimer);
       reapplyTimer = window.setTimeout(() => {
         reapplyTimer = null;
         doReapply();
-      }, 30);
+      }, delay);
     };
+    const onMediaReady = () => reapply();
 
     const onPlay = () => {
       // Only resume the WebAudio context if we've ever attached. Calling
       // resume() on a non-existent context is a no-op but cleaner this way.
       if (isAttached) resume();
+      if (isEqActive(getEQSettings())) reapply();
     };
     const onPointer = () => { if (isAttached) resume(); };
 
@@ -78,12 +80,12 @@ export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
     };
 
     // User toggled EQ in modal — apply right now.
-    const onEqChanged = () => reapply();
+    const onEqChanged = () => reapply(90);
 
     doReapply();
-    audioElement.addEventListener('loadstart', reapply);
-    audioElement.addEventListener('loadedmetadata', reapply);
-    audioElement.addEventListener('canplay', reapply);
+    audioElement.addEventListener('loadstart', onMediaReady);
+    audioElement.addEventListener('loadedmetadata', onMediaReady);
+    audioElement.addEventListener('canplay', onMediaReady);
     audioElement.addEventListener('play', onPlay);
     audioElement.addEventListener('playing', onPlay);
     document.addEventListener('pointerdown', onPointer, { once: true });
@@ -92,9 +94,9 @@ export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
 
     return () => {
       if (reapplyTimer != null) clearTimeout(reapplyTimer);
-      audioElement.removeEventListener('loadstart', reapply);
-      audioElement.removeEventListener('loadedmetadata', reapply);
-      audioElement.removeEventListener('canplay', reapply);
+      audioElement.removeEventListener('loadstart', onMediaReady);
+      audioElement.removeEventListener('loadedmetadata', onMediaReady);
+      audioElement.removeEventListener('canplay', onMediaReady);
       audioElement.removeEventListener('play', onPlay);
       audioElement.removeEventListener('playing', onPlay);
       document.removeEventListener('pointerdown', onPointer);

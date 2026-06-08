@@ -109,6 +109,7 @@ const AUDIO_PROXY_ALLOWED_HOST_SUFFIXES = [
   '.f5.si',
   '.thepixora.com',
   '.yewtu.be',
+  '.saavncdn.com',
 ];
 
 function hostnameMatchesAllowedSuffix(hostname: string): boolean {

@@ -8,7 +8,7 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
 import { resume as engineResume, type StudioSpaceId } from '@/lib/audioEngine';
 import { useEngineState } from '@/hooks/useGlobalAudioEngine';
-import { setEQSettings, useEQSettings } from '@/lib/eqSettings';
+import { getEQSettings, isEqActive, setEQSettings, useEQSettings } from '@/lib/eqSettings';
 
 interface StudioSpace {
   id: StudioSpaceId;
@@ -44,6 +44,7 @@ interface Preset {
   icon: React.ComponentType<{ className?: string }>;
   bands: number[];
   bassBoost: number;
+  spatialAudio?: boolean;
 }
 
 // 10-band presets — matches engine's BAND_DEFS (32Hz → 16kHz)
@@ -52,7 +53,7 @@ const presets: Preset[] = [
   { id: 'bass-boost',   name: 'Bass Boost',   icon: Zap,        bands: [4, 3, 2, 0, 0, 0, 0, 0, 0, 0], bassBoost: 35 },
   { id: 'treble-boost', name: 'Treble Boost', icon: Disc3,      bands: [0, 0, 0, 0, 0, 0, 1, 2, 3, 3], bassBoost: 0 },
   { id: 'vocal',        name: 'Vocal',        icon: Volume2,    bands: [-2, -1, 0, 1, 3, 4, 3, 1, 0, -1], bassBoost: 0 },
-  { id: '8d-audio',     name: '8D Audio',     icon: Globe,      bands: [2, 1, 0, -1, 0, 0, 1, 2, 1, 1], bassBoost: 10 },
+  { id: '8d-audio',     name: '8D Audio',     icon: Globe,      bands: [2, 1, 0, -1, 0, 0, 1, 2, 1, 1], bassBoost: 10, spatialAudio: true },
   { id: 'phonk',        name: 'Phonk',        icon: Headphones, bands: [6, 5, 3, 1, 0, -1, 0, 1, 2, 2], bassBoost: 55 },
   { id: 'deep-bass',    name: 'Deep Bass',    icon: Waves,      bands: [7, 6, 4, 2, 0, 0, 0, -1, -1, -1], bassBoost: 70 },
   { id: 'concert',      name: 'Concert',      icon: Disc3,      bands: [3, 2, 1, 0, 1, 1, 2, 2, 2, 1], bassBoost: 15 },
@@ -79,6 +80,16 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   const settings = useEQSettings();
   const bands = defaultBands.map((b, i) => ({ ...b, gain: settings.bands[i] ?? 0 }));
   const { bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight, activePreset } = settings;
+  const effectsActive = isEqActive(settings);
+  const connectionLabel = !currentSong
+    ? 'Play a song to connect'
+    : isConnected
+      ? 'Connected'
+      : effectsActive
+        ? engineMode === 'unsupported'
+          ? 'Unavailable on this stream'
+          : 'Connecting…'
+        : 'Ready — choose a preset';
 
   // Resume the AudioContext on open (user-gesture window) so the global engine
   // can apply EQ immediately. All actual graph work — connect, setBands,
@@ -88,6 +99,9 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
   useEffect(() => {
     if (!isOpen) return;
     engineResume();
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('uf-eq-changed', { detail: getEQSettings() }));
+    }, 40);
   }, [isOpen]);
 
   const handleBandChange = useCallback((index: number, value: number) => {
@@ -96,7 +110,12 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
 
 
   const handlePresetSelect = useCallback((preset: Preset) => {
-    setEQSettings({ bands: preset.bands, bassBoost: Math.min(preset.bassBoost, 60), activePreset: preset.id });
+    setEQSettings({
+      bands: preset.bands,
+      bassBoost: Math.min(preset.bassBoost, 60),
+      spatialAudio: !!preset.spatialAudio,
+      activePreset: preset.id,
+    });
     toast.success(`${preset.name} preset applied`);
   }, []);
 
@@ -170,8 +189,8 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
                 <p className="text-black/60 text-[10px] font-extrabold uppercase tracking-[0.18em]">Studio sound</p>
                 <h2 className="text-black text-[30px] leading-none font-display tracking-wide">EQUALIZER</h2>
                 <p className="text-xs text-black/70 font-semibold truncate flex items-center gap-1">
-                  {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
-                  {isConnected ? 'Connected' : currentSong ? 'Connecting…' : 'Play a song to connect'}
+                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-black' : effectsActive ? 'bg-black/50 animate-pulse' : 'bg-black/30'}`} />
+                  {connectionLabel}
                 </p>
               </div>
             </div>

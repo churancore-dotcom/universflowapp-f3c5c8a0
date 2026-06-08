@@ -21,6 +21,12 @@ function detectCountryCode(): string | undefined {
 
 type Mode = 'login' | 'signup';
 
+const authPanelVariants = {
+  initial: (isLogin: boolean) => ({ opacity: 0, x: isLogin ? -28 : 28, scale: 0.97, filter: 'blur(10px)' }),
+  animate: { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' },
+  exit: (isLogin: boolean) => ({ opacity: 0, x: isLogin ? 28 : -28, scale: 0.97, filter: 'blur(10px)' }),
+};
+
 const Auth = () => {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -192,7 +198,11 @@ const Auth = () => {
             ))}
           </div>
 
+          <AnimatePresence mode="wait" initial={false} custom={isLogin}>
           <motion.form
+            key={mode}
+            custom={isLogin}
+            variants={authPanelVariants}
             onSubmit={handleSubmit}
             className="relative rounded-3xl p-5 space-y-4"
             style={{
@@ -200,9 +210,10 @@ const Auth = () => {
               border: '1px solid rgba(255, 255, 255, 0.08)',
               boxShadow: '0 24px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
             }}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
           >
             <div>
               <h2 className="text-[17px] font-bold text-foreground tracking-tight">
@@ -314,6 +325,7 @@ const Auth = () => {
               </p>
             )}
           </motion.form>
+          </AnimatePresence>
         </motion.div>
 
         <motion.div

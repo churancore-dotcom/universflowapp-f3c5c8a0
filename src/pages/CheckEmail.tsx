@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const verifyVariants = {
+  initial: { opacity: 0, y: 26, scale: 0.96, filter: 'blur(12px)' },
+  animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
+};
+
 const CheckEmail = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,9 +95,10 @@ const CheckEmail = () => {
 
       <motion.div
         className="relative w-full max-w-sm z-10 text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        variants={verifyVariants}
+        initial="initial"
+        animate="animate"
+        transition={{ type: 'spring', stiffness: 210, damping: 24, mass: 0.9 }}
       >
         {/* Animated envelope hero */}
         <motion.div
@@ -115,7 +121,7 @@ const CheckEmail = () => {
               background: 'linear-gradient(135deg, #FF2D55, #BF5AF2, #5E5CE6)',
               boxShadow: '0 18px 50px hsl(340 100% 50% / 0.45), inset 0 1px 0 rgba(255,255,255,0.18)',
             }}
-            animate={{ y: [0, -6, 0] }}
+            animate={{ y: [0, -6, 0], rotate: [0, -2, 2, 0] }}
             transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
           >
             <Mail className="w-12 h-12 text-white" strokeWidth={1.75} />
