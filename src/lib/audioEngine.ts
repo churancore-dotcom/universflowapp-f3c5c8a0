@@ -79,7 +79,7 @@ const BAND_DEFS: Array<{ freq: number; type: BiquadFilterType; q: number }> = [
 
 function ensureCtx(): AudioContext | null {
   if (engine.ctx && engine.ctx.state !== 'closed') return engine.ctx;
-  const AC = window.AudioContext || (window as any).webkitAudioContext;
+  const AC = window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
   try {
     const ctx = new AC({ latencyHint: 'playback' });
