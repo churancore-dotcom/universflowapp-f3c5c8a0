@@ -5,9 +5,11 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { useDownloads } from '@/contexts/DownloadContext';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '@/components/BottomNav';
+import RoseHero from '@/components/RoseHero';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { iosSpring, staggerContainer, staggerItem } from '@/lib/animations';
 import SEOHead from '@/components/SEOHead';
+
 
 interface CachedSong {
   id: string;
