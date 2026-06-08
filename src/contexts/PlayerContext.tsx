@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveIndexedTrack, prefetchIndexedTrack } from '@/lib/musicIndexer';
 import { playerProgressStore, usePlayerProgress } from '@/lib/playerProgressStore';
 import { resume as resumeAudioEngine } from '@/lib/audioEngine';
-import { EQ_SETTINGS_KEY, getEQSettings } from '@/lib/eqSettings';
+import { EQ_SETTINGS_KEY, getEQSettings, isEqActive } from '@/lib/eqSettings';
 import { toast } from 'sonner';
 
 interface YouTubePlayer {
@@ -167,32 +167,22 @@ supabase.auth.onAuthStateChange((_event, session) => {
   cachedAccessToken = session?.access_token ?? null;
 });
 
+/**
+ * Edge-function proxy is ONLY used when EQ effects are active (so the
+ * WebAudio graph can process the CORS-safe stream). When EQ is flat —
+ * the default for almost every user — we play the raw URL directly so
+ * Android can stream natively without going through our edge function.
+ * That removes ~2-4s of buffering on lock-screen and background.
+ */
 const buildStreamProxyUrl = (sourceUrl: string) => {
   const projectUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!projectUrl || !shouldProxyStreamUrl(sourceUrl)) return sourceUrl;
-  // The music-indexer audio proxy is intentionally open; never attach the JWT
-  // (it would leak into history, logs, and Referer headers for no benefit).
+  if (!isEqProcessingEnabled()) return sourceUrl;
   return `${projectUrl}/functions/v1/music-indexer?audio=${encodeURIComponent(sourceUrl)}`;
 };
 
-
 const isEqProcessingEnabled = () => {
-  try {
-    const settings = getEQSettings();
-    const hasBands = Array.isArray(settings?.bands) && settings.bands.some((gain: number) => Math.abs(gain) >= 0.5);
-
-    return Boolean(
-      hasBands ||
-      settings?.bassBoost > 0 ||
-      settings?.reverb > 0 ||
-      settings?.spatialAudio ||
-      (settings?.studioSpace && settings.studioSpace !== 'off') ||
-      settings?.lateNight ||
-      (settings?.playbackSpeed && settings.playbackSpeed !== 1)
-    );
-  } catch {
-    return false;
-  }
+  try { return isEqActive(getEQSettings()); } catch { return false; }
 };
 
 const isYouTubeFallbackUrl = (url?: string | null) => Boolean(url?.startsWith('yt-video:'));
