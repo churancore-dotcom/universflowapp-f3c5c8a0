@@ -1,48 +1,63 @@
 import { useEffect, useState } from 'react';
 import { connectAudioElement, setBands, setReverb, setSpatial, setLateNight, setStudioSpace as engineSetStudioSpace, resume, subscribe } from '@/lib/audioEngine';
-import { getEQSettings } from '@/lib/eqSettings';
+import { getEQSettings, isEqActive } from '@/lib/eqSettings';
 
 /**
- * Mount once at app root. Connects the engine to the live <audio> element
- * and re-applies persisted EQ settings whenever:
- *  - the audio element instance changes (crossfade swap)
- *  - its `src` attribute changes (next song / queue advance)
- *  - any of: loadstart, loadedmetadata, canplay, playing, emptied fire
- *  - the user changes EQ in the modal (uf-eq-changed event)
+ * Mount once at app root.
  *
- * Critical: we ALWAYS re-push setBands/setReverb/etc on every reapply, even
- * if the engine chain didn't need a rebuild — otherwise a silent disconnect
- * (e.g. AudioContext suspend → resume on Android) would leave EQ neutralised
- * until the user toggled it again. EQ should ONLY go off when the user
- * explicitly disables it.
+ * Critical Android background-audio rule:
+ *   - When EQ is FLAT (default state), do NOT create a MediaElementSource
+ *     or touch the WebAudio graph at all. The <audio> element plays directly
+ *     through Android's native MediaPlayer, which the foreground music
+ *     notification service keeps alive on lock screen / in background with
+ *     ZERO gaps.
+ *   - When the user actually enables an EQ effect (slider, reverb, spatial,
+ *     studio space, late-night, playback speed), THEN we attach WebAudio.
+ *     Once attached the element is tainted forever (Web Audio limitation),
+ *     but that's an acceptable trade because the user explicitly chose the
+ *     effect.
+ *
+ * This single change eliminates the 2-4s lock-screen gap and the
+ * background glitchiness that the WebAudio graph caused on Android WebView
+ * (the AudioContext suspends when the WebView backgrounds).
  */
 export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
   useEffect(() => {
     if (!audioElement) return;
 
-    let lastAppliedSrc = '';
     let reapplyTimer: number | null = null;
+    // Once we've attached WebAudio for this element, we can't detach — the
+    // MediaElementSource permanently routes audio through the graph. We just
+    // keep re-pushing settings on every src/play change.
+    let isAttached = false;
 
     const doReapply = () => {
       const s = getEQSettings();
-      // Always keep normal HTMLAudio songs attached to the WebAudio graph.
-      // Flat EQ still sounds neutral, but the graph remains ready so the next
-      // song and the next slider/preset change apply instantly without a
-      // silent "direct mode" gap.
+      const wantsProcessing = isEqActive(s);
+
+      // Always honor playback rate — it's a native <audio> property,
+      // independent of WebAudio.
+      audioElement.playbackRate = s.playbackSpeed;
+
+      if (!wantsProcessing && !isAttached) {
+        // Pure HTMLAudio path — best for Android background reliability.
+        return;
+      }
+
+      // User has effects on (or had them on earlier this session) — attach
+      // and push current settings.
       const ok = connectAudioElement(audioElement);
       if (ok) {
+        isAttached = true;
         setBands(s.bands, s.bassBoost);
         setReverb(s.reverb);
         engineSetStudioSpace(s.studioSpace);
         setSpatial(s.spatialAudio);
         setLateNight(s.lateNight);
       }
-      audioElement.playbackRate = s.playbackSpeed;
-      lastAppliedSrc = audioElement.currentSrc || audioElement.src || '';
     };
 
-    // Coalesce burst events (loadstart + loadedmetadata + canplay all fire
-    // within ms of each other on a track change) into a single rebuild.
+    // Coalesce loadstart+loadedmetadata+canplay bursts into a single rebuild.
     const reapply = () => {
       if (reapplyTimer != null) return;
       reapplyTimer = window.setTimeout(() => {
@@ -51,61 +66,37 @@ export function useGlobalAudioEngine(audioElement: HTMLAudioElement | null) {
       }, 30);
     };
 
-    // Force immediate reapply when src actually changes — catches the
-    // crossfade swap case where the audio element is already past canplay
-    // by the time we re-attach listeners.
-    const reapplyIfSrcChanged = () => {
-      const now = audioElement.currentSrc || audioElement.src || '';
-      if (now && now !== lastAppliedSrc) reapply();
+    const onPlay = () => {
+      // Only resume the WebAudio context if we've ever attached. Calling
+      // resume() on a non-existent context is a no-op but cleaner this way.
+      if (isAttached) resume();
     };
+    const onPointer = () => { if (isAttached) resume(); };
 
-    // Resume the AudioContext on first user gesture / play
-    const onPlay = () => { resume(); reapplyIfSrcChanged(); };
-    const onPlaying = () => { resume(); reapplyIfSrcChanged(); };
-    const onPointer = () => resume();
-
-    // Background → DO NOT swap chains or even call reapply on foreground.
-    // Disconnecting/reconnecting the MediaElementSource mid-playback causes
-    // an audible pop and can stall the stream on Android WebView. Just resume
-    // the AudioContext when we come back into focus; EQ values are already
-    // wired and remain so. This is the Spotify-like contract: nothing the UI
-    // does ever interrupts the audio graph.
     const onVisibility = () => {
-      if (document.visibilityState !== 'hidden') resume();
+      if (document.visibilityState !== 'hidden' && isAttached) resume();
     };
-
 
     // User toggled EQ in modal — apply right now.
     const onEqChanged = () => reapply();
-
-    // Watch for programmatic src changes (PlayerContext sets audio.src on
-    // every track change). MutationObserver fires synchronously and BEFORE
-    // any media events, so EQ is wired up the instant the new song loads.
-    const srcObserver = new MutationObserver(() => reapply());
-    srcObserver.observe(audioElement, { attributes: true, attributeFilter: ['src'] });
 
     doReapply();
     audioElement.addEventListener('loadstart', reapply);
     audioElement.addEventListener('loadedmetadata', reapply);
     audioElement.addEventListener('canplay', reapply);
-    audioElement.addEventListener('emptied', reapply);
-    audioElement.addEventListener('durationchange', reapplyIfSrcChanged);
     audioElement.addEventListener('play', onPlay);
-    audioElement.addEventListener('playing', onPlaying);
+    audioElement.addEventListener('playing', onPlay);
     document.addEventListener('pointerdown', onPointer, { once: true });
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('uf-eq-changed', onEqChanged);
 
     return () => {
       if (reapplyTimer != null) clearTimeout(reapplyTimer);
-      srcObserver.disconnect();
       audioElement.removeEventListener('loadstart', reapply);
       audioElement.removeEventListener('loadedmetadata', reapply);
       audioElement.removeEventListener('canplay', reapply);
-      audioElement.removeEventListener('emptied', reapply);
-      audioElement.removeEventListener('durationchange', reapplyIfSrcChanged);
       audioElement.removeEventListener('play', onPlay);
-      audioElement.removeEventListener('playing', onPlaying);
+      audioElement.removeEventListener('playing', onPlay);
       document.removeEventListener('pointerdown', onPointer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('uf-eq-changed', onEqChanged);

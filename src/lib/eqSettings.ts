@@ -86,11 +86,29 @@ export function useEQSettings() {
   return useSyncExternalStore(subscribeEQSettings, getEQSettings, getEQSettings);
 }
 
+/**
+ * True when the user has any audio processing turned on. When this is FALSE
+ * (flat EQ, no reverb, no spatial, no studio space, no late-night, 1x speed)
+ * the player MUST play directly through HTMLAudioElement and NOT through
+ * the WebAudio graph — otherwise Android WebView suspends the AudioContext
+ * on lock screen / background and audio gaps 2-4s.
+ */
+export function isEqActive(settings = currentSettings): boolean {
+  if (!settings) return false;
+  if (settings.bands?.some((gain) => Math.abs(gain) >= 0.5)) return true;
+  if (settings.bassBoost > 0) return true;
+  if (settings.reverb > 0) return true;
+  if (settings.spatialAudio) return true;
+  if (settings.studioSpace && settings.studioSpace !== 'off') return true;
+  if (settings.lateNight) return true;
+  if (settings.playbackSpeed && settings.playbackSpeed !== 1) return true;
+  return false;
+}
+
 export function getEQPresetLabel(settings = currentSettings) {
   if (settings.activePreset && settings.activePreset !== 'custom') return settings.activePreset.replace(/-/g, ' ');
   if (settings.studioSpace && settings.studioSpace !== 'off') return settings.studioSpace.replace(/-/g, ' ');
-  const activeBands = settings.bands.some((gain) => Math.abs(gain) >= 0.5);
-  if (activeBands || settings.bassBoost > 0 || settings.reverb > 0 || settings.spatialAudio || settings.lateNight || settings.playbackSpeed !== 1) return 'custom';
+  if (isEqActive(settings)) return 'custom';
   return 'flat';
 }
 
