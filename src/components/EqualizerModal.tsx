@@ -6,16 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { iosSpring } from '@/lib/animations';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
-import {
-  connectAudioElement,
-  setBands as engineSetBands,
-  setReverb as engineSetReverb,
-  setSpatial as engineSetSpatial,
-  setStudioSpace as engineSetStudioSpace,
-  setLateNight as engineSetLateNight,
-  resume as engineResume,
-  type StudioSpaceId,
-} from '@/lib/audioEngine';
+import { resume as engineResume, type StudioSpaceId } from '@/lib/audioEngine';
 import { useEngineState } from '@/hooks/useGlobalAudioEngine';
 import { setEQSettings, useEQSettings } from '@/lib/eqSettings';
 
@@ -59,12 +50,12 @@ interface Preset {
 const presets: Preset[] = [
   { id: 'flat',         name: 'Flat',         icon: Music2,     bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], bassBoost: 0 },
   { id: 'bass-boost',   name: 'Bass Boost',   icon: Zap,        bands: [4, 3, 2, 0, 0, 0, 0, 0, 0, 0], bassBoost: 35 },
-  { id: 'treble-boost', name: 'Treble Boost', icon: Disc3,   bands: [0, 0, 0, 0, 0, 0, 1, 2, 3, 3], bassBoost: 0 },
+  { id: 'treble-boost', name: 'Treble Boost', icon: Disc3,      bands: [0, 0, 0, 0, 0, 0, 1, 2, 3, 3], bassBoost: 0 },
   { id: 'vocal',        name: 'Vocal',        icon: Volume2,    bands: [-2, -1, 0, 1, 3, 4, 3, 1, 0, -1], bassBoost: 0 },
   { id: '8d-audio',     name: '8D Audio',     icon: Globe,      bands: [2, 1, 0, -1, 0, 0, 1, 2, 1, 1], bassBoost: 10 },
   { id: 'phonk',        name: 'Phonk',        icon: Headphones, bands: [6, 5, 3, 1, 0, -1, 0, 1, 2, 2], bassBoost: 55 },
   { id: 'deep-bass',    name: 'Deep Bass',    icon: Waves,      bands: [7, 6, 4, 2, 0, 0, 0, -1, -1, -1], bassBoost: 70 },
-  { id: 'concert',      name: 'Concert',      icon: Disc3,   bands: [3, 2, 1, 0, 1, 1, 2, 2, 2, 1], bassBoost: 15 },
+  { id: 'concert',      name: 'Concert',      icon: Disc3,      bands: [3, 2, 1, 0, 1, 1, 2, 2, 2, 1], bassBoost: 15 },
 ];
 
 // Labels mirror engine's BAND_DEFS (32Hz → 16kHz)
@@ -82,60 +73,27 @@ const defaultBands: EQBand[] = [
 ];
 
 const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
-  const { audioElement, currentSong } = usePlayer();
+  const { currentSong } = usePlayer();
   const engineMode = useEngineState();
   const isConnected = engineMode === 'processed';
   const settings = useEQSettings();
   const bands = defaultBands.map((b, i) => ({ ...b, gain: settings.bands[i] ?? 0 }));
   const { bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight, activePreset } = settings;
 
-  // Keep the WebAudio graph attached for every normal song. Flat settings are
-  // neutral, but staying connected makes presets/sliders and next-song changes
-  // apply immediately instead of falling into direct mode.
+  // Resume the AudioContext on open (user-gesture window) so the global engine
+  // can apply EQ immediately. All actual graph work — connect, setBands,
+  // setReverb, setStudioSpace, setSpatial, setLateNight, playbackRate — is
+  // handled by useGlobalAudioEngine listening for the `uf-eq-changed` event
+  // that setEQSettings dispatches. The modal is purely a state surface.
   useEffect(() => {
-    if (!audioElement) return;
+    if (!isOpen) return;
     engineResume();
-    const connected = connectAudioElement(audioElement);
-    if (connected) {
-      engineSetBands(bands.map(b => b.gain), bassBoost);
-      if (studioSpace === 'off') engineSetReverb(reverb);
-      engineSetStudioSpace(studioSpace);
-      engineSetSpatial(spatialAudio);
-      engineSetLateNight(lateNight);
-    }
-    audioElement.playbackRate = playbackSpeed;
-  }, [audioElement, currentSong?.id, bands, bassBoost, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
-
-  // Push EQ band changes to the engine (smoothed, never rebuilds graph)
-  useEffect(() => {
-    if (!audioElement) return;
-    engineResume();
-    if (connectAudioElement(audioElement)) engineSetBands(bands.map(b => b.gain), bassBoost);
-  }, [bands, bassBoost, audioElement, reverb, playbackSpeed, spatialAudio, studioSpace, lateNight]);
-
-  useEffect(() => {
-    if (studioSpace === 'off') engineSetReverb(reverb);
-  }, [reverb, studioSpace]);
-
-  useEffect(() => {
-    engineSetStudioSpace(studioSpace);
-  }, [studioSpace]);
-
-  useEffect(() => {
-    engineSetSpatial(spatialAudio);
-  }, [spatialAudio]);
-
-  useEffect(() => {
-    engineSetLateNight(lateNight);
-  }, [lateNight]);
-
-  useEffect(() => {
-    if (audioElement) audioElement.playbackRate = playbackSpeed;
-  }, [playbackSpeed, audioElement]);
+  }, [isOpen]);
 
   const handleBandChange = useCallback((index: number, value: number) => {
     setEQSettings((prev) => ({ bands: prev.bands.map((gain, i) => i === index ? value : gain), activePreset: 'custom' }));
   }, []);
+
 
   const handlePresetSelect = useCallback((preset: Preset) => {
     setEQSettings({ bands: preset.bands, bassBoost: Math.min(preset.bassBoost, 60), activePreset: preset.id });
