@@ -111,9 +111,9 @@ const EqualizerModal = ({ isOpen, onClose }: EqualizerModalProps) => {
       lateNight: false,
       activePreset: 'flat',
     });
-    if (audioElement) audioElement.playbackRate = 1;
     toast.success('Equalizer reset');
-  }, [audioElement]);
+  }, []);
+
 
   const handleSpaceSelect = useCallback((id: StudioSpaceId) => {
     setEQSettings({ studioSpace: id });
