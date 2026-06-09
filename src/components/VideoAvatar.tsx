@@ -69,8 +69,8 @@ const VideoAvatar = memo(({ variant, size = 96, paused = false }: Props) => {
         // @ts-ignore — non-standard but improves background playback on iOS Safari
         disableRemotePlayback
         preload="auto"
-        className="w-full h-full object-contain"
-        style={{ pointerEvents: 'none', transform: 'scale(0.88)' }}
+        className="w-full h-full object-cover"
+        style={{ pointerEvents: 'none' }}
       />
     </div>
   );
