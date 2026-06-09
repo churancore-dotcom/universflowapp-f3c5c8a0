@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import appLogo from '@/assets/universflow-mark.png';
+import appLogo from '@/assets/app-logo.png';
 
 type State = 'loading' | 'success' | 'error';
 

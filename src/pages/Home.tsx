@@ -31,7 +31,7 @@ import { TabTransition } from '@/components/PageTransition';
 import { Music, Lock, ListMusic, Sliders, Headphones } from 'lucide-react';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { usePremium } from '@/hooks/usePremium';
-import appLogo from '@/assets/universflow-mark.png';
+import appLogo from '@/assets/app-logo.png';
 import { HomeSkeleton } from '@/components/PageSkeletons';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import SEOHead from '@/components/SEOHead';

@@ -9,7 +9,7 @@ import MiniPlayer from '@/components/MiniPlayer';
 import FullscreenPlayer from '@/components/FullscreenPlayer';
 import { triggerHaptic } from '@/hooks/useHaptics';
 import { iosSpring, staggerContainer, staggerItem } from '@/lib/animations';
-import appLogo from '@/assets/universflow-mark.png';
+import appLogo from '@/assets/app-logo.png';
 
 const OfflinePlayerShell = memo(function OfflinePlayerShell() {
   const { playSong, currentSong, isPlaying, setQueue } = usePlayer();
