@@ -121,9 +121,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTimeout(async () => {
           await ensureUserProfile(nextSession.user);
           await checkAdminRole(nextSession.user.id);
+          await loadEmailVerified(nextSession.user.id);
         }, 0);
       } else {
         setIsAdmin(false);
+        setEmailVerified(null);
       }
 
       setIsLoading(false);
@@ -136,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existingSession?.user) {
         await ensureUserProfile(existingSession.user);
         await checkAdminRole(existingSession.user.id);
+        await loadEmailVerified(existingSession.user.id);
 
         // Validate the refresh token while online. If it's invalid (signed out
         // elsewhere, rotated keys, stale session), sign out cleanly instead of
@@ -152,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, [checkAdminRole, ensureUserProfile]);
+  }, [checkAdminRole, ensureUserProfile, loadEmailVerified]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
