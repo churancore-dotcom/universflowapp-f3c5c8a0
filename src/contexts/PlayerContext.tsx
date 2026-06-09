@@ -1084,6 +1084,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const handleEnded = () => {
+      // De-dupe: 'ended' + the timeupdate safety net could both fire for the
+      // same song. Only the first wins until the next play request bumps seq.
+      if (endedFiredForSeqRef.current === playRequestSeqRef.current) return;
+      endedFiredForSeqRef.current = playRequestSeqRef.current;
       if (repeat === 'one') {
         audio.currentTime = 0;
         audio.play().catch(console.warn);
