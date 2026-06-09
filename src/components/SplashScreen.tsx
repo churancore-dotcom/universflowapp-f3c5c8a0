@@ -6,8 +6,6 @@ interface SplashScreenProps {
   onComplete: () => void;
 }
 
-// Splash: plays the user-provided splash video full-bleed on a black backdrop.
-// No ring, no halo, no title — just the video, like the user asked.
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -24,18 +22,26 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
     >
-      <div className="w-48 h-48 rounded-full overflow-hidden flex items-center justify-center bg-black">
-        <video
-          ref={videoRef}
-          src={splashVideo.url}
-          autoPlay
-          muted
-          playsInline
-          preload="auto"
-          onEnded={onComplete}
-          onError={onComplete}
-          className="w-full h-full object-cover"
-        />
+      <div className="flex flex-col items-center gap-5">
+        <div className="w-44 h-44 rounded-full overflow-hidden flex items-center justify-center bg-black shadow-[0_0_48px_hsl(var(--primary)_/_0.24)]">
+          <video
+            ref={videoRef}
+            src={splashVideo.url}
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={onComplete}
+            onError={onComplete}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="text-center">
+          <h1 className="text-[28px] leading-none font-black tracking-[0.08em] text-foreground">
+            Univers <span className="text-primary">Flow</span>
+          </h1>
+          <div className="mt-3 h-[2px] w-28 mx-auto rounded-full uf-rose-gradient opacity-90" />
+        </div>
       </div>
     </motion.div>
   );

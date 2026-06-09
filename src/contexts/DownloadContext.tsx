@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Song } from './PlayerContext';
 import { toast } from 'sonner';
 import { canDownloadSong, getDownloadUnavailableMessage } from '@/lib/songSupport';
+import { resolveIndexedTrack } from '@/lib/musicIndexer';
 
 // Build a proxy URL for cross-origin streams that fail direct fetch.
 // Uses the same music-indexer audio proxy that the player uses.
@@ -31,6 +32,23 @@ const robustFetch = async (url: string, init?: RequestInit): Promise<Response> =
     if (!proxied.ok) throw new Error(`Proxy HTTP ${proxied.status}`);
     return proxied;
   }
+};
+
+const resolveDownloadableSong = async (song: Song): Promise<Song> => {
+  const audioUrl = song.audio_url?.trim();
+  const needsResolve = !audioUrl || audioUrl === 'pending' || audioUrl === 'resolving' || audioUrl.startsWith('yt-video:');
+  if (!needsResolve && audioUrl.startsWith('http')) return song;
+
+  const resolved = await resolveIndexedTrack(song.artist, song.title, { forceRefresh: needsResolve }).catch(() => null);
+  if (resolved?.streamUrl) {
+    return {
+      ...song,
+      audio_url: resolved.streamUrl,
+      cover_url: song.cover_url || resolved.cover_url || undefined,
+      duration: song.duration || resolved.duration || undefined,
+    };
+  }
+  return song;
 };
 
 interface DownloadedSong extends Song {
@@ -315,7 +333,12 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         [song.id]: { songId: song.id, progress: 5, status: 'downloading' }
       }));
 
-      const response = await robustFetch(song.audio_url, {
+      const downloadableSong = await resolveDownloadableSong(song);
+      if (!downloadableSong.audio_url || !downloadableSong.audio_url.startsWith('http')) {
+        throw new Error('No downloadable stream available');
+      }
+
+      const response = await robustFetch(downloadableSong.audio_url, {
         mode: 'cors',
         credentials: 'omit',
         signal: controller.signal,
@@ -359,11 +382,11 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const blob = new Blob(chunks, { type: 'audio/mpeg' });
       const blobUrl = URL.createObjectURL(blob);
       let coverBlob: Blob | null = null;
-      let offlineCoverUrl = song.cover_url;
+      let offlineCoverUrl = downloadableSong.cover_url;
 
-      if (song.cover_url && /^https?:\/\//i.test(song.cover_url)) {
+      if (downloadableSong.cover_url && /^https?:\/\//i.test(downloadableSong.cover_url)) {
         try {
-          const coverResponse = await robustFetch(song.cover_url, { mode: 'cors', credentials: 'omit' });
+          const coverResponse = await robustFetch(downloadableSong.cover_url, { mode: 'cors', credentials: 'omit' });
           if (coverResponse.ok) {
             coverBlob = await coverResponse.blob();
             offlineCoverUrl = URL.createObjectURL(coverBlob);
@@ -374,7 +397,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       const downloadedSong: DownloadedSong = {
-        ...song,
+        ...downloadableSong,
         cover_url: offlineCoverUrl,
         downloadedAt: new Date().toISOString(),
         blobUrl,
@@ -382,7 +405,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
 
       // Save to IndexedDB
-      await saveToDB({ ...downloadedSong, cover_url: song.cover_url }, blob, coverBlob);
+      await saveToDB({ ...downloadedSong, cover_url: downloadableSong.cover_url }, blob, coverBlob);
 
       // Update state
       setDownloads(prev => [...prev, downloadedSong]);
