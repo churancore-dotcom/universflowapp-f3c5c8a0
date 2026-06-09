@@ -24,17 +24,19 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
     >
-      <video
-        ref={videoRef}
-        src={splashVideo.url}
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        onEnded={onComplete}
-        onError={onComplete}
-        className="w-full h-full object-cover"
-      />
+      <div className="w-48 h-48 rounded-full overflow-hidden flex items-center justify-center bg-black">
+        <video
+          ref={videoRef}
+          src={splashVideo.url}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onEnded={onComplete}
+          onError={onComplete}
+          className="w-full h-full object-cover"
+        />
+      </div>
     </motion.div>
   );
 };
