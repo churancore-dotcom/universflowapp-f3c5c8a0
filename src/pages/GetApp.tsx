@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Download, Share2, ShieldCheck, Music2, WifiOff, Sparkles, Headphones, ChevronRight, Users } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 
