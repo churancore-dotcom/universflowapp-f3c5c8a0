@@ -32,6 +32,8 @@ import Home from "./pages/Home";
 import Search from "./pages/Search";
 import Library from "./pages/Library";
 import Profile from "./pages/Profile";
+import GetApp from "./pages/GetApp";
+import { isMedianApp } from "./lib/median";
 import OfflinePlayerShell from "./components/OfflinePlayerShell";
 import OfflineGate from "./components/OfflineGate";
 import { SentryErrorBoundary } from "./components/SentryErrorBoundary";
@@ -145,13 +147,20 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Root entry: signed-in users → /home, otherwise straight to /auth.
+// Root entry:
+// - Inside the native APK (Median webview): straight to Home/Auth (never show the landing).
+// - Signed-in web users: straight to Home.
+// - Everyone else (logged-out web): show the APK download landing page so Google ranks
+//   universflow.in as "the Android app", not a generic web player.
 const RootGate = () => {
   const { user, isLoading, emailVerified } = useAuth();
   if (isLoading) return <LazyFallback />;
-  if (!user) return <Navigate to="/auth" replace />;
-  if (emailVerified === false) return <Navigate to="/check-email" replace />;
-  return <Home />;
+  if (user) {
+    if (emailVerified === false) return <Navigate to="/check-email" replace />;
+    return <Home />;
+  }
+  if (isMedianApp) return <Navigate to="/auth" replace />;
+  return <GetApp />;
 };
 
 
@@ -165,7 +174,7 @@ const AnimatedRoutes = () => {
     <Suspense fallback={<LazyFallback />}>
         <Routes location={location}>
           <Route path="/" element={<RootGate />} />
-          <Route path="/get" element={<Navigate to="/auth" replace />} />
+          <Route path="/get" element={<GetApp />} />
           <Route path="/welcome" element={<Navigate to="/auth" replace />} />
           <Route path="/auth" element={
             user ? <Navigate to="/home" replace /> :
