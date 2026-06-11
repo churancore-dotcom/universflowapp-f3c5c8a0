@@ -222,7 +222,7 @@ const GetApp = () => {
         {/* What's new */}
         <section className="px-5 pb-8">
           <h2 className="text-base font-bold mb-2">What&apos;s new</h2>
-          <p className="text-xs text-white/50 mb-2">Version {VERSION}</p>
+          <p className="text-xs text-white/70 mb-2">Version {VERSION}</p>
           <ul className="text-sm text-white/75 space-y-1.5 list-disc list-inside">
             <li>Faster splash & instant avatar loading</li>
             <li>New Apple Music-style fullscreen player</li>
