@@ -113,6 +113,7 @@ export const useLike = (songId: string, song?: Song | null) => {
 
     setIsLiked(newLiked);
     if (newLiked) { likeCache.add(songId); } else { likeCache.delete(songId); }
+    notifyLikeSubscribers();
 
     const isCatalog = isCatalogSongId(songId);
 
