@@ -162,6 +162,7 @@ const RootGate = () => {
   const { user, isLoading, emailVerified } = useAuth();
   if (isLoading) return <LazyFallback />;
   if (user) {
+    if (emailVerified === null) return <LazyFallback />;
     if (emailVerified === false) return <Navigate to="/check-email" replace />;
     return <Home />;
   }
